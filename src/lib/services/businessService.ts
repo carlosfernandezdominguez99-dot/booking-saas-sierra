@@ -76,9 +76,13 @@ export async function getPrimaryBusinessForUser(client: TypedClient, userId: str
   if (membershipError) throw membershipError;
   if (!membership) return null;
 
+  // Lista explícita de columnas en vez de select("*"): ver el comentario
+  // equivalente en authContext.ts.
   const { data: business, error: businessError } = await client
     .from("businesses")
-    .select("*")
+    .select(
+      "id, owner_id, name, slug, description, logo_url, phone, address, city, business_type, timezone, subscription_status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
+    )
     .eq("id", membership.business_id)
     .single();
 
