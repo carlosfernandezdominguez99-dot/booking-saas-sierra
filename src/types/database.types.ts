@@ -168,4 +168,110 @@ export interface Database {
           min_cancellation_hours: number;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["bookin
+        Insert: Partial<Database["public"]["Tables"]["booking_settings"]["Row"]> & {
+          business_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["booking_settings"]["Row"]>;
+        Relationships: [];
+      };
+      customers: {
+        Row: {
+          id: string;
+          business_id: string;
+          name: string;
+          phone: string;
+          email: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["customers"]["Row"]> & {
+          business_id: string;
+          name: string;
+          phone: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["customers"]["Row"]>;
+        Relationships: [];
+      };
+      bookings: {
+        Row: {
+          id: string;
+          business_id: string;
+          service_id: string;
+          employee_id: string | null;
+          customer_id: string;
+          start_time: string;
+          end_time: string;
+          status: BookingStatus;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["bookings"]["Row"]> & {
+          business_id: string;
+          service_id: string;
+          customer_id: string;
+          start_time: string;
+          end_time: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["bookings"]["Row"]>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          business_id: string;
+          booking_id: string | null;
+          channel: NotificationChannel;
+          type: string;
+          status: NotificationStatus;
+          payload: Record<string, unknown> | null;
+          sent_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
+          business_id: string;
+          channel: NotificationChannel;
+          type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      get_available_slots: {
+        Args: {
+          p_business_id: string;
+          p_service_id: string;
+          p_date: string;
+          p_employee_id?: string | null;
+        };
+        Returns: { slot_start: string; slot_end: string }[];
+      };
+      create_public_booking: {
+        Args: {
+          p_business_id: string;
+          p_service_id: string;
+          p_start_time: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_employee_id?: string | null;
+          p_customer_email?: string | null;
+          p_comment?: string | null;
+        };
+        Returns: {
+          booking_id: string;
+          business_name: string;
+          service_name: string;
+          price_cents: number;
+          start_time: string;
+          end_time: string;
+          status: string;
+        }[];
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
