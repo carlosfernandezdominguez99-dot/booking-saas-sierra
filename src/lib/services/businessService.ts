@@ -1,8 +1,12 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database.types";
+import type { createClient } from "@/lib/supabase/server";
 import { slugify, withRandomSuffix } from "@/lib/utils/slugify";
 
-type TypedClient = SupabaseClient<Database>;
+// Se deriva del propio factory de `lib/supabase/server.ts` en vez de
+// reescribir a mano los genéricos de `SupabaseClient<Database>`: así el
+// tipo siempre coincide exactamente con el cliente real que se le pasa,
+// sin depender de cómo @supabase/ssr resuelva esos genéricos por dentro
+// en cada versión (una discrepancia ahí rompía el build en Vercel).
+type TypedClient = Awaited<ReturnType<typeof createClient>>;
 
 const MAX_SLUG_ATTEMPTS = 5;
 
