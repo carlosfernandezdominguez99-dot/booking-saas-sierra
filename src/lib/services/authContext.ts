@@ -1,6 +1,10 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import type { Database, BusinessMemberRole } from "@/types/database.types";
+
+type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
 
 /**
  * Resuelve el usuario autenticado y su negocio principal para las páginas
@@ -18,8 +22,21 @@ import { createClient } from "@/lib/supabase/server";
  * tipado de selects anidados de @supabase/supabase-js depende de esos
  * metadatos. Dos consultas planas son igual de eficientes para este caso
  * y evitan depender de esa inferencia.
+ *
+ * El tipo de retorno se anota explícitamente (`Promise<{ ...; business:
+ * BusinessRow; ... }>`) y el resultado de la consulta de `businesses` se
+ * fuerza con `as unknown as BusinessRow | null`. En la versión de
+ * @supabase/supabase-js instalada, el tipo automático que infiere
+ * `.select(...)` para esta tabla concreta colapsaba a `never` en el build
+ * de Vercel (aunque la consulta en sí funciona perfectamente en runtime);
+ * forzar el tipo aquí evita depender de esa inferencia rota.
  */
-export async function requireBusinessContext() {
+export async function requireBusinessContext(): Promise<{
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  user: User;
+  business: BusinessRow;
+  role: BusinessMemberRole;
+}> {
   const supabase = await createClient();
 
   const {
@@ -42,17 +59,16 @@ export async function requireBusinessContext() {
     redirect("/registro");
   }
 
-  // Se usa una lista explícita de columnas en vez de select("*"): con nuestro
-  // tipo de Database escrito a mano, "*" resolvía a `never` en el build de
-  // Vercel (ver database.types.ts). Esta lista debe reflejar todas las
-  // columnas de `businesses` en supabase/migrations/0001_schema.sql.
-  const { data: business } = await supabase
+  // Se usa una lista explícita de columnas en vez de select("*") (ver nota
+  // más arriba); esta lista debe reflejar todas las columnas de
+  // `businesses` en supabase/migrations/0001_schema.sql.
+  const { data: business } = (await supabase
     .from("businesses")
     .select(
       "id, owner_id, name, slug, description, logo_url, phone, address, city, business_type, timezone, subscription_status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .eq("id", membership.business_id)
-    .single();
+    .single()) as unknown as { data: BusinessRow | null };
 
   if (!business) {
     redirect("/registro");
