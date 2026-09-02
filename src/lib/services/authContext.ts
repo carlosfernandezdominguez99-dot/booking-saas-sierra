@@ -42,9 +42,15 @@ export async function requireBusinessContext() {
     redirect("/registro");
   }
 
+  // Se usa una lista explícita de columnas en vez de select("*"): con nuestro
+  // tipo de Database escrito a mano, "*" resolvía a `never` en el build de
+  // Vercel (ver database.types.ts). Esta lista debe reflejar todas las
+  // columnas de `businesses` en supabase/migrations/0001_schema.sql.
   const { data: business } = await supabase
     .from("businesses")
-    .select("*")
+    .select(
+      "id, owner_id, name, slug, description, logo_url, phone, address, city, business_type, timezone, subscription_status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
+    )
     .eq("id", membership.business_id)
     .single();
 
