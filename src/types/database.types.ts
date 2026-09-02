@@ -6,6 +6,13 @@
  * automáticamente con:
  *   npm run supabase:types
  * (usa el Supabase CLI y sobreescribe este archivo).
+ *
+ * Nota: cada tabla incluye `Relationships: []` y el esquema incluye
+ * `CompositeTypes` aunque no los usemos, porque @supabase/supabase-js
+ * (vía @supabase/postgrest-js) espera esa forma exacta (la misma que
+ * genera `supabase gen types`) para poder resolver correctamente los
+ * tipos de `.select(...)`, incluido `select("*")`. Sin `Relationships`,
+ * algunas consultas resolvían silenciosamente a `never` en el build.
  */
 
 export type SubscriptionStatus = "trial" | "active" | "past_due" | "cancelled";
@@ -28,6 +35,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
+        Relationships: [];
       };
       businesses: {
         Row: {
@@ -54,6 +62,7 @@ export interface Database {
           slug: string;
         };
         Update: Partial<Database["public"]["Tables"]["businesses"]["Row"]>;
+        Relationships: [];
       };
       business_members: {
         Row: {
@@ -68,6 +77,7 @@ export interface Database {
           user_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["business_members"]["Row"]>;
+        Relationships: [];
       };
       services: {
         Row: {
@@ -88,6 +98,7 @@ export interface Database {
           duration_minutes: number;
         };
         Update: Partial<Database["public"]["Tables"]["services"]["Row"]>;
+        Relationships: [];
       };
       employees: {
         Row: {
@@ -104,11 +115,13 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["employees"]["Row"]>;
+        Relationships: [];
       };
       employee_services: {
         Row: { employee_id: string; service_id: string };
         Insert: { employee_id: string; service_id: string };
         Update: Partial<{ employee_id: string; service_id: string }>;
+        Relationships: [];
       };
       business_hours: {
         Row: {
@@ -127,6 +140,7 @@ export interface Database {
           end_time: string;
         };
         Update: Partial<Database["public"]["Tables"]["business_hours"]["Row"]>;
+        Relationships: [];
       };
       blocked_dates: {
         Row: {
@@ -142,6 +156,7 @@ export interface Database {
           date: string;
         };
         Update: Partial<Database["public"]["Tables"]["blocked_dates"]["Row"]>;
+        Relationships: [];
       };
       booking_settings: {
         Row: {
@@ -153,105 +168,4 @@ export interface Database {
           min_cancellation_hours: number;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["booking_settings"]["Row"]> & {
-          business_id: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["booking_settings"]["Row"]>;
-      };
-      customers: {
-        Row: {
-          id: string;
-          business_id: string;
-          name: string;
-          phone: string;
-          email: string | null;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["customers"]["Row"]> & {
-          business_id: string;
-          name: string;
-          phone: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["customers"]["Row"]>;
-      };
-      bookings: {
-        Row: {
-          id: string;
-          business_id: string;
-          service_id: string;
-          employee_id: string | null;
-          customer_id: string;
-          start_time: string;
-          end_time: string;
-          status: BookingStatus;
-          comment: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["bookings"]["Row"]> & {
-          business_id: string;
-          service_id: string;
-          customer_id: string;
-          start_time: string;
-          end_time: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["bookings"]["Row"]>;
-      };
-      notifications: {
-        Row: {
-          id: string;
-          business_id: string;
-          booking_id: string | null;
-          channel: NotificationChannel;
-          type: string;
-          status: NotificationStatus;
-          payload: Record<string, unknown> | null;
-          sent_at: string | null;
-          created_at: string;
-        };
-        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
-          business_id: string;
-          channel: NotificationChannel;
-          type: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
-      };
-    };
-    Views: Record<string, never>;
-    Functions: {
-      get_available_slots: {
-        Args: {
-          p_business_id: string;
-          p_service_id: string;
-          p_date: string;
-          p_employee_id?: string | null;
-        };
-        Returns: { slot_start: string; slot_end: string }[];
-      };
-      create_public_booking: {
-        Args: {
-          p_business_id: string;
-          p_service_id: string;
-          p_start_time: string;
-          p_customer_name: string;
-          p_customer_phone: string;
-          p_employee_id?: string | null;
-          p_customer_email?: string | null;
-          p_comment?: string | null;
-        };
-        Returns: {
-          booking_id: string;
-          business_name: string;
-          service_name: string;
-          price_cents: number;
-          start_time: string;
-          end_time: string;
-          status: string;
-        }[];
-      };
-    };
-    Enums: Record<string, never>;
-  };
-}
+        Insert: Partial<Database["public"]["Tables"]["bookin
