@@ -165,10 +165,13 @@ vez de spreads condicionales (`...(cond && {...})`), porque ese patrón le
 hace perder a TypeScript el tipo literal de `statuses`/`order` — ver el
 comentario en el propio archivo.
 
-**⚠️ Pendiente de confirmar por Carlos:** que el build de Vercel con todos
-estos archivos termina sin errores, y una prueba manual de las tres vistas
-del calendario, el selector de fecha y la nueva sección de estadísticas
-con datos reales.
+**✅ Verificado por Carlos en producción**, incluidas las mejoras
+posteriores de esta misma fase: paginación (clientes y reservas, 5/20/50
+por página), corrección del caché de navegación de Next.js que dejaba
+"pegada" la pestaña anterior en Reservas (`staleTimes.dynamic: 0` en
+`next.config.mjs`), la función RPC `get_my_primary_business` para reducir
+idas y vueltas a Supabase en cada página, `loading.tsx` del panel, y el
+favicon con la Z del logo. **Fase 4 cerrada.**
 
 ---
 
