@@ -18,6 +18,16 @@ export function Sidebar({ businessName }: { businessName: string }) {
         <p className="mt-1 truncate text-xs text-ink-500">{businessName}</p>
       </div>
 
+      {/*
+        Prefetch por defecto (sin `prefetch={false}`): esto es lo que hace
+        que navegar entre secciones del panel se sienta instantáneo en vez
+        de esperar una recarga completa en cada clic. Se desactivó
+        temporalmente al diagnosticar el cierre de sesión aleatorio, pero
+        la causa real era que el middleware llamaba a `getUser()` también
+        en las peticiones de prefetch (ver el comentario en
+        `lib/supabase/middleware.ts`) — ya arreglado ahí, así que aquí es
+        seguro dejar el prefetch activado.
+      */}
       <nav className="flex flex-1 flex-col gap-1">
         {DASHBOARD_NAV_ITEMS.map((item) => {
           const active = pathname?.startsWith(item.href);
@@ -25,7 +35,6 @@ export function Sidebar({ businessName }: { businessName: string }) {
             <Link
               key={item.href}
               href={item.href}
-              prefetch={false}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 active ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
