@@ -99,8 +99,8 @@ function mapAuthError(message: string): string {
   if (message.toLowerCase().includes("already registered")) {
     return "Ya existe una cuenta con ese email. Prueba a iniciar sesión.";
   }
-  // TODO(fase 9 - pulido final): quitar el detalle técnico entre paréntesis
-  // antes de lanzar a usuarios reales. Se deja temporalmente mientras
-  // depuramos el flujo de registro/confirmación de email.
-  return `MARCADOR-DE-PRUEBA-999 :: ${message} :: MARCADOR-DE-PRUEBA-999`;
+  if (message.toLowerCase().includes("email rate limit exceeded")) {
+    return "Se han enviado demasiados emails en poco tiempo. Espera unos minutos e inténtalo de nuevo.";
+  }
+  return "No se pudo crear la cuenta. Inténtalo de nuevo.";
 }

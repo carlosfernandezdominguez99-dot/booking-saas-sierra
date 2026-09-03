@@ -33,10 +33,7 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
-    // TODO(fase 9 - pulido final): quitar el detalle técnico entre
-    // paréntesis antes de lanzar a usuarios reales. Se deja temporalmente
-    // mientras depuramos el flujo de registro/confirmación de email.
-    return { error: `Email o contraseña incorrectos. (${error.message})` };
+    return { error: "Email o contraseña incorrectos." };
   }
 
   redirect(redirectTo);
