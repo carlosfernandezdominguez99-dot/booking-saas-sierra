@@ -7,16 +7,23 @@ export const metadata: Metadata = { title: "Crea tu cuenta" };
 
 export default function RegistroPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ink-50/50 px-4 py-12">
-      <div className="w-full max-w-md">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-ink-950 px-4 py-12">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-brand-500/15 blur-[100px] animate-glow-pulse" />
+      </div>
+
+      <div className="relative w-full max-w-md animate-fade-in">
         <div className="mb-8 text-center">
-          <Link href="/" className="text-sm font-semibold tracking-tight text-ink-900">
-            Zoria<span className="text-brand-500">Booking</span>
+          <Link href="/" className="text-sm font-semibold tracking-tight text-white">
+            Zoria<span className="text-brand-400">Booking</span>
           </Link>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink-950">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
             Crea tu cuenta
           </h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-sm text-white/50">
             14 días de prueba gratis. Sin tarjeta.
           </p>
         </div>
@@ -25,9 +32,9 @@ export default function RegistroPage() {
           <RegisterForm />
         </Card>
 
-        <p className="mt-6 text-center text-sm text-ink-500">
+        <p className="mt-6 text-center text-sm text-white/40">
           ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="font-medium text-ink-900 hover:underline">
+          <Link href="/login" className="font-medium text-white hover:underline">
             Inicia sesión
           </Link>
         </p>

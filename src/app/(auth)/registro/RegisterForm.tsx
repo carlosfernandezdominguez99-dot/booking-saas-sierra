@@ -45,8 +45,8 @@ export function RegisterForm() {
         <FieldError message={fieldErrors.password} />
       </div>
 
-      <div className="border-t border-ink-100 pt-5">
-        <p className="mb-4 text-sm font-medium text-ink-700">Tu negocio</p>
+      <div className="border-t border-ink-100 pt-5 dark:border-white/10">
+        <p className="mb-4 text-sm font-medium text-ink-700 dark:text-white/70">Tu negocio</p>
 
         <div className="space-y-5">
           <div>
@@ -67,7 +67,7 @@ export function RegisterForm() {
               id="businessType"
               name="businessType"
               defaultValue=""
-              className="h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-400/60"
+              className="h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-400/60 dark:border-white/10 dark:bg-ink-900 dark:text-white"
             >
               <option value="" disabled>Selecciona una opción</option>
               {BUSINESS_TYPES.map((t) => (

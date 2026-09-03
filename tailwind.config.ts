@@ -58,10 +58,33 @@ const config: Config = {
           "0%": { opacity: "0", transform: "scale(0.97)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-18px)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { opacity: "0.55" },
+          "50%": { opacity: "0.9" },
+        },
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+        typing: {
+          "0%": { width: "0%" },
+          "100%": { width: "100%" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.35s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
+        float: "float 6s ease-in-out infinite",
+        "float-delayed": "float 7s ease-in-out 1.5s infinite",
+        "glow-pulse": "glow-pulse 4s ease-in-out infinite",
+        "gradient-x": "gradient-x 6s ease infinite",
+      },
+      backgroundSize: {
+        "gradient-200": "200% 200%",
       },
     },
   },

@@ -10,14 +10,23 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   loading?: boolean;
 }
 
+// Cada variante incluye clases `dark:` para cuando el botón vive dentro de
+// un contenedor con className="dark" (landing, login, registro) — el
+// dashboard nunca tiene ese ancestro, así que se queda con el estilo claro
+// de siempre.
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950 disabled:bg-ink-300",
+    "bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950 disabled:bg-ink-300 " +
+    "dark:bg-brand-500 dark:text-ink-950 dark:shadow-[0_0_30px_-6px_theme(colors.brand.500)] dark:hover:bg-brand-400 dark:hover:shadow-[0_0_40px_-4px_theme(colors.brand.400)] dark:active:bg-brand-600 dark:disabled:bg-brand-900 dark:disabled:text-brand-500/50 dark:disabled:shadow-none",
   secondary:
-    "bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 disabled:bg-brand-200",
+    "bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 disabled:bg-brand-200 " +
+    "dark:shadow-[0_0_30px_-8px_theme(colors.brand.400)]",
   outline:
-    "border border-ink-200 bg-white text-ink-900 hover:bg-ink-50 active:bg-ink-100 disabled:text-ink-300",
-  ghost: "text-ink-700 hover:bg-ink-100 active:bg-ink-200 disabled:text-ink-300",
+    "border border-ink-200 bg-white text-ink-900 hover:bg-ink-50 active:bg-ink-100 disabled:text-ink-300 " +
+    "dark:border-white/15 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/10 dark:active:bg-white/15",
+  ghost:
+    "text-ink-700 hover:bg-ink-100 active:bg-ink-200 disabled:text-ink-300 " +
+    "dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white dark:active:bg-white/15",
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -33,9 +42,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-colors duration-150",
+          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-150",
+          "hover:-translate-y-0.5 active:translate-y-0",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2",
-          "disabled:cursor-not-allowed",
+          "disabled:cursor-not-allowed disabled:hover:translate-y-0",
           variantClasses[variant],
           sizeClasses[size],
           className,
