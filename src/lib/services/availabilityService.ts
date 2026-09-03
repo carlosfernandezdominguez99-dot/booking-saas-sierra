@@ -35,10 +35,14 @@ export async function getAvailableSlots(
   client: TypedClient,
   { businessId, serviceId, date, employeeId }: GetAvailableSlotsParams,
 ): Promise<AvailableSlot[]> {
-  // `as unknown as` en el resultado, igual que en el resto del proyecto:
-  // ver la nota larga en `database.types.ts` sobre por qué no nos fiamos
-  // a ciegas de la inferencia automática de @supabase/supabase-js.
-  const { data, error } = (await client.rpc("get_available_slots", {
+  // `(client.rpc as any)`: el overload de `.rpc()` no está resolviendo el
+  // parámetro de argumentos para esta función (falla en build con "is not
+  // assignable to parameter of type 'undefined'"), el mismo tipo de fallo
+  // de inferencia que motivó los `as any` en `.insert()`/`.update()` — ver
+  // la nota larga en `database.types.ts`. Se evita apoyándose en el
+  // overload sin tipar, y se fuerza el resultado al shape real que
+  // esperamos.
+  const { data, error } = (await (client.rpc as any)("get_available_slots", {
     p_business_id: businessId,
     p_service_id: serviceId,
     p_date: date,

@@ -44,7 +44,9 @@ export async function createPublicBooking(
   client: TypedClient,
   params: CreatePublicBookingParams,
 ): Promise<PublicBookingResult> {
-  const { data, error } = (await client.rpc("create_public_booking", {
+  // `(client.rpc as any)`: mismo fallo de inferencia de tipos que en
+  // `availabilityService.ts` — ver el comentario detallado allí.
+  const { data, error } = (await (client.rpc as any)("create_public_booking", {
     p_business_id: params.businessId,
     p_service_id: params.serviceId,
     p_start_time: params.startTime,
