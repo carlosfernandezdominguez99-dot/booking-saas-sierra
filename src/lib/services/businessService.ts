@@ -11,6 +11,7 @@ type TypedClient = Awaited<ReturnType<typeof createClient>>;
 
 type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
 type BusinessInsert = Database["public"]["Tables"]["businesses"]["Insert"];
+type BusinessUpdate = Database["public"]["Tables"]["businesses"]["Update"];
 type MembershipRow = { business_id: string; role: string };
 
 const MAX_SLUG_ATTEMPTS = 5;
@@ -158,4 +159,41 @@ export async function ensureBusinessForUser(
   });
 
   return getPrimaryBusinessForUser(client, user.id);
+}
+
+/**
+ * Paso 1 del onboarding: descripción, dirección y ciudad. El resto de
+ * datos del negocio (nombre, teléfono, tipo) ya se piden en el registro.
+ */
+export async function updateBusinessProfile(
+  client: TypedClient,
+  businessId: string,
+  input: { description?: string; address?: string; city?: string },
+): Promise<void> {
+  const updatePayload: BusinessUpdate = {
+    description: input.description ? input.description : null,
+    address: input.address ? input.address : null,
+    city: input.city ? input.city : null,
+  };
+
+  // `as any` en el acceso a la tabla por el mismo motivo que en
+  // `createBusinessForOwner`: ver la nota larga en `database.types.ts`.
+  const { error } = await (client.from("businesses") as any)
+    .update(updatePayload)
+    .eq("id", businessId);
+
+  if (error) throw error;
+}
+
+/**
+ * Marca el asistente de onboarding como completado (último paso, paso 5).
+ */
+export async function completeOnboarding(client: TypedClient, businessId: string): Promise<void> {
+  const updatePayload: BusinessUpdate = { onboarding_completed_at: new Date().toISOString() };
+
+  const { error } = await (client.from("businesses") as any)
+    .update(updatePayload)
+    .eq("id", businessId);
+
+  if (error) throw error;
 }

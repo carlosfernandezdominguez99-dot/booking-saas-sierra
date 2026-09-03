@@ -1,35 +1,54 @@
-import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
-import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { listServices } from "@/lib/services/servicesService";
+import { hoursRowsToWeekly, listBusinessHours } from "@/lib/services/hoursService";
+import { getBookingSettings } from "@/lib/services/bookingSettingsService";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import type { BookingSettingsInput } from "@/lib/validations/business";
+
+const DEFAULT_SETTINGS: BookingSettingsInput = {
+  minNoticeMinutes: 60,
+  maxNoticeDays: 30,
+  bufferMinutes: 0,
+  allowCancellation: true,
+  minCancellationHours: 24,
+};
 
 export default async function OnboardingNegocioPage() {
-  const { business } = await requireBusinessContext();
+  const { supabase, business } = await requireBusinessContext();
+
+  const [services, hoursRows, settingsRow] = await Promise.all([
+    listServices(supabase, business.id),
+    listBusinessHours(supabase, business.id),
+    getBookingSettings(supabase, business.id),
+  ]);
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const publicUrl = `${siteUrl}/negocio/${business.slug}`;
+
+  const initialSettings: BookingSettingsInput = settingsRow
+    ? {
+        minNoticeMinutes: settingsRow.min_notice_minutes,
+        maxNoticeDays: settingsRow.max_notice_days,
+        bufferMinutes: settingsRow.buffer_minutes,
+        allowCancellation: settingsRow.allow_cancellation,
+        minCancellationHours: settingsRow.min_cancellation_hours,
+      }
+    : DEFAULT_SETTINGS;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-ink-50/50 px-4 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">
-            Paso 1 de 5
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink-950">
-            ¡Cuenta creada, {business.name}!
-          </h1>
-        </div>
-
-        <Card>
-          <CardTitle>El asistente de configuración llega en la Fase 2</CardTitle>
-          <CardDescription className="mb-4">
-            Ya tienes usuario y negocio creados de forma segura (con Row Level Security activo).
-            En la siguiente fase se implementa aquí el asistente paso a paso: información del
-            negocio, servicios, horarios y configuración de reservas.
-          </CardDescription>
-          <Link href="/dashboard/inicio">
-            <Button className="w-full">Ir al panel</Button>
-          </Link>
-        </Card>
-      </div>
+      <OnboardingWizard
+        businessName={business.name}
+        initialProfile={{
+          description: business.description ?? "",
+          address: business.address ?? "",
+          city: business.city ?? "",
+        }}
+        initialServices={services}
+        initialWeeklyHours={hoursRowsToWeekly(hoursRows)}
+        initialBookingSettings={initialSettings}
+        publicUrl={publicUrl}
+      />
     </main>
   );
 }
