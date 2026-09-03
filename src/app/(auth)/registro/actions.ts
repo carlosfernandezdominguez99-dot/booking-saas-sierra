@@ -99,5 +99,8 @@ function mapAuthError(message: string): string {
   if (message.toLowerCase().includes("already registered")) {
     return "Ya existe una cuenta con ese email. Prueba a iniciar sesión.";
   }
-  return "No se pudo crear la cuenta. Inténtalo de nuevo.";
+  // TODO(fase 9 - pulido final): quitar el detalle técnico entre paréntesis
+  // antes de lanzar a usuarios reales. Se deja temporalmente mientras
+  // depuramos el flujo de registro/confirmación de email.
+  return `No se pudo crear la cuenta. Inténtalo de nuevo. (${message})`;
 }
