@@ -102,5 +102,5 @@ function mapAuthError(message: string): string {
   // TODO(fase 9 - pulido final): quitar el detalle técnico entre paréntesis
   // antes de lanzar a usuarios reales. Se deja temporalmente mientras
   // depuramos el flujo de registro/confirmación de email.
-  return `No se pudo crear la cuenta. Inténtalo de nuevo. (${message})`;
+  return `MARCADOR-DE-PRUEBA-999 :: ${message} :: MARCADOR-DE-PRUEBA-999`;
 }
