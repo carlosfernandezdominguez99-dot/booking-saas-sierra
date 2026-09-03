@@ -88,13 +88,82 @@
 
 ---
 
+## ✅ Fase 3 — Sistema de disponibilidad + reservas (motor, sin UI nueva)
+
+Alcance decidido con Carlos: solo la capa de servicio, bien tipada,
+apoyada en las funciones de base de datos que ya existían desde la Fase 1.
+Ninguna pantalla nueva — las usarán la Fase 4 (calendario/panel) y la
+Fase 5 (reserva pública).
+
+**Implementado:**
+
+- `src/lib/services/availabilityService.ts` — `getAvailableSlots()`,
+  envoltorio tipado de `get_available_slots` (horario del día, incluida
+  jornada partida, días bloqueados, antelación mín./máx., buffer y
+  solapes — toda esa lógica ya vivía en Postgres).
+- `src/lib/services/bookingService.ts`:
+  - `createPublicBooking()` — envoltorio de `create_public_booking`
+    (revalida el hueco en Postgres, crea/actualiza cliente y reserva).
+  - `listBookings()` — lista reservas del negocio autenticado, con
+    filtros de rango de fechas y estado (para el calendario de la Fase 4).
+  - `cancelBooking()` — cancelación manual desde el panel (la cancelación
+    por WhatsApp con lista de espera es la Fase 7).
+
+**Pendiente de verificar por ti:** no tengo acceso a las credenciales de
+tu proyecto de Supabase desde este entorno, así que no he podido ejecutar
+estas funciones contra datos reales yo mismo. Como comprobación rápida,
+en el **SQL Editor** de Supabase puedes ejecutar (con un `business_id` y
+`service_id` reales de los tuyos):
+
+```sql
+select * from get_available_slots(
+  '<business_id>'::uuid,
+  '<service_id>'::uuid,
+  current_date + 1
+);
+```
+
+Si devuelve huecos con sentido (respetando tu horario), el motor
+funciona — mi código en TypeScript es un envoltorio fiel de esa misma
+función, revisado línea a línea contra su firma exacta.
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 2 — Onboarding + negocio + servicios + horarios
-- [ ] Fase 3 — Sistema de disponibilidad + reservas
 - [ ] Fase 4 — Dashboard + calendario + clientes
 - [ ] Fase 5 — Página pública de reservas
 - [ ] Fase 6 — PWA + responsive + UX
 - [ ] Fase 7 — Preparación WhatsApp
 - [ ] Fase 8 — Suscripciones/Stripe preparado
 - [ ] Fase 9 — Testing + seguridad + revisión final
+
+---
+
+## 📝 Notas de producto para fases futuras
+
+Requisitos que Carlos ha ido detallando, capturados aquí para no perderlos
+aunque todavía no toque implementarlos (dependen de trabajo de fases
+anteriores que aún no existe: disponibilidad real, reservas, etc.).
+
+### Fase 7 — WhatsApp: modificar/crear cita y lista de espera
+
+- Al crear o modificar una cita por WhatsApp, se debe mostrar al cliente un
+  listado de huecos acorde a los **servicios que tiene dados de alta el
+  negocio** (no una lista genérica).
+- Al modificar una cita, el hueco ofrecido tiene que respetar la
+  **duración del servicio**: no se puede encajar un servicio de 1h en un
+  hueco libre de 30 min, por ejemplo.
+- **Lista de espera**: cada entrada es `cliente + servicio` (no solo el
+  cliente), precisamente porque el hueco que se libere tiene que encajar
+  en duración con el servicio que esa persona quiere.
+- Cuando se libera una cita (cancelación), se avisa **en orden** a la
+  lista de espera — solo a las personas cuyo servicio encaja en tiempo con
+  el hueco liberado — y se espera la respuesta del cliente (sí/no quiere
+  esa cita) antes de pasar a la siguiente.
+- Si la persona avisada **rechaza** el hueco: se pasa a ofrecerlo a la
+  siguiente persona de la lista de espera cuyo servicio encaje en tiempo
+  con ese hueco (respetando el orden de la lista, saltando a quien no
+  encaje).
+- Si la persona avisada **acepta** el hueco: se crea su cita, se elimina
+  su entrada de la lista de espera y se reordena el resto de la lista.
