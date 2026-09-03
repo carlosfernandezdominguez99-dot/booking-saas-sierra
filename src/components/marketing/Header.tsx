@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/server";
 
-export function MarketingHeader() {
+/**
+ * Se comprueba la sesión aquí (Server Component async) para que alguien ya
+ * logueado que llega a la landing vea "Ir al panel" en vez de "Iniciar
+ * sesión" / "Probar gratis" — si no, parece que la sesión se ha cerrado
+ * aunque siga activa. Es solo una mejora visual: no reemplaza ninguna
+ * comprobación de seguridad (esas siguen en el middleware y en
+ * `requireBusinessContext`).
+ */
+export async function MarketingHeader() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-ink-950/70 backdrop-blur-md">
       <div className="container-app flex h-16 items-center justify-between">
@@ -17,12 +31,20 @@ export function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">Iniciar sesión</Button>
-          </Link>
-          <Link href="/registro">
-            <Button variant="primary" size="sm">Probar gratis</Button>
-          </Link>
+          {user ? (
+            <Link href="/dashboard/inicio">
+              <Button variant="primary" size="sm">Ir al panel</Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="ghost" size="sm">Iniciar sesión</Button>
+              </Link>
+              <Link href="/registro">
+                <Button variant="primary" size="sm">Probar gratis</Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
