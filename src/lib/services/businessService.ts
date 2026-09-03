@@ -12,7 +12,6 @@ type TypedClient = Awaited<ReturnType<typeof createClient>>;
 type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
 type BusinessInsert = Database["public"]["Tables"]["businesses"]["Insert"];
 type BusinessUpdate = Database["public"]["Tables"]["businesses"]["Update"];
-type MembershipRow = { business_id: string; role: string };
 
 const MAX_SLUG_ATTEMPTS = 5;
 
@@ -85,42 +84,36 @@ export async function createBusinessForOwner(
  */
 export async function getPrimaryBusinessForUser(
   client: TypedClient,
-  userId: string,
+  // Ya no se usa: la RPC de abajo resuelve siempre el negocio del usuario
+  // autenticado de la sesión (`auth.uid()` dentro de la función SQL), no
+  // el id que se le pase aquí. Se mantiene el parámetro para no tener que
+  // tocar todas las llamadas existentes (`ensureBusinessForUser` sigue
+  // pasando `user.id`).
+  _userId: string,
 ): Promise<{ role: string; business: BusinessRow } | null> {
-  // Se fuerza el tipo del resultado porque `membership` se reutiliza en la
-  // siguiente consulta (ver comentario detallado en authContext.ts): la
-  // inferencia automática de este `select` colapsaba a `never` en el
-  // build de Vercel.
-  const { data: membership, error: membershipError } = (await client
-    .from("business_members")
-    .select("business_id, role")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle()) as unknown as {
-    data: MembershipRow | null;
+  // Antes esto eran dos consultas secuenciadas (`business_members` y
+  // luego `businesses`): dos idas y vueltas de red a Supabase en CADA
+  // página del panel, porque `requireBusinessContext` pasa por aquí
+  // siempre. Se sustituyen por una sola llamada a la función SQL
+  // `get_my_primary_business` (`0005_primary_business_rpc.sql`), que hace
+  // el join dentro de Postgres y devuelve todo de una vez — la mitad de
+  // idas y vueltas en cada carga del panel.
+  //
+  // `(client.rpc as any)`: mismo fallo de inferencia de tipos que en
+  // `availabilityService.ts`/`bookingService.ts` — ver el comentario
+  // detallado allí.
+  const { data, error } = (await (client.rpc as any)("get_my_primary_business")) as unknown as {
+    data: ({ role: string } & BusinessRow)[] | null;
     error: { message: string } | null;
   };
 
-  if (membershipError) throw membershipError;
-  if (!membership) return null;
+  if (error) throw error;
 
-  // Lista explícita de columnas en vez de select("*"), y el resultado se
-  // fuerza con `as unknown as` (ver el comentario equivalente y más
-  // detallado en authContext.ts): el tipo automático que infiere
-  // @supabase/supabase-js para este select concreto colapsaba a `never`
-  // en el build de Vercel.
-  const { data: business, error: businessError } = (await client
-    .from("businesses")
-    .select(
-      "id, owner_id, name, slug, description, logo_url, phone, address, city, business_type, timezone, subscription_status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
-    )
-    .eq("id", membership.business_id)
-    .single()) as unknown as { data: BusinessRow | null; error: { message: string } | null };
+  const row = data?.[0];
+  if (!row) return null;
 
-  if (businessError) throw businessError;
-  if (!business) return null;
-  return { role: membership.role, business };
+  const { role, ...business } = row;
+  return { role, business: business as unknown as BusinessRow };
 }
 
 /**

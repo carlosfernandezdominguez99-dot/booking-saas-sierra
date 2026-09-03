@@ -209,3 +209,41 @@ anteriores que aún no existe: disponibilidad real, reservas, etc.).
   encaje).
 - Si la persona avisada **acepta** el hueco: se crea su cita, se elimina
   su entrada de la lista de espera y se reordena el resto de la lista.
+
+---
+
+## 🔧 Rendimiento del panel (tras reportar lentitud al navegar, especialmente en el calendario)
+
+**Causa real:** cada página del panel pasa por `requireBusinessContext()`,
+que hacía 3 idas y vueltas de red a Supabase seguidas (comprobar sesión +
+buscar membresía + buscar negocio) antes incluso de empezar a pedir los
+datos propios de la página. El calendario, además, suma sus propias
+consultas (reservas + clientes + servicios). Sin ninguna pantalla de
+carga intermedia, todo eso se notaba como una pantalla "congelada" en
+cada clic.
+
+**Arreglado:**
+
+- `supabase/migrations/0005_primary_business_rpc.sql` (nueva, hay que
+  ejecutarla en el SQL Editor) — función `get_my_primary_business()` que
+  hace en una sola llamada lo que antes eran dos consultas secuenciadas.
+  Usa `auth.uid()` internamente (nunca un id recibido por parámetro) para
+  que, aunque sea `security definer`, un usuario nunca pueda leer el
+  negocio de otro.
+- `src/lib/services/businessService.ts` — `getPrimaryBusinessForUser()`
+  ahora llama a esa función en vez de hacer las dos consultas.
+- `src/app/dashboard/loading.tsx` (nueva) — pantalla de carga instantánea
+  que Next.js muestra automáticamente en CUALQUIER página del panel
+  mientras esa página resuelve sus datos, incluido cambiar de vista/fecha
+  dentro del propio calendario. Antes no había ninguna, así que la espera
+  se sentía como que la app se había quedado colgada.
+- Reactivado el prefetch de los enlaces del menú (ver más abajo, ya
+  corregido antes de esto).
+
+**⚠️ Pendiente — IMPORTANTE, hacerlo antes de dar por bueno el deploy:**
+ejecutar `0005_primary_business_rpc.sql` en el SQL Editor de Supabase
+(igual que se hizo con el bucket de logos). El build de Vercel compilará
+sin problema aunque no se ejecute, pero en cuanto alguien abra el panel en
+producción, la llamada a `get_my_primary_business()` fallará en tiempo de
+ejecución porque la función todavía no existe en la base de datos —
+**el panel entero dejaría de funcionar** hasta ejecutar la migración.
