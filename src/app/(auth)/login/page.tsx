@@ -18,8 +18,12 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md animate-fade-in">
         <div className="mb-8 text-center">
-          <Link href="/" className="text-sm font-semibold tracking-tight text-white">
-            Zoria<span className="text-brand-400">Booking</span>
+          <Link href="/" className="inline-flex flex-col items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-mark.jpg" alt="ZoriaBooking" className="h-12 w-12 rounded-xl" />
+            <span className="text-sm font-semibold tracking-tight text-white">
+              Zoria<span className="text-brand-400">Booking</span>
+            </span>
           </Link>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
             Bienvenido de nuevo

@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { getBookingSettings } from "@/lib/services/bookingSettingsService";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
+import { LogoUploader } from "@/components/dashboard/LogoUploader";
+import { BusinessProfileForm } from "@/components/dashboard/BusinessProfileForm";
+import { BookingSettingsForm } from "@/components/dashboard/BookingSettingsForm";
 import { Button } from "@/components/ui/Button";
+import type { BookingSettingsInput } from "@/lib/validations/business";
 
 const STATUS_LABEL: Record<string, string> = {
   trial: "Prueba gratuita",
@@ -11,11 +16,30 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelada",
 };
 
+const DEFAULT_SETTINGS: BookingSettingsInput = {
+  minNoticeMinutes: 60,
+  maxNoticeDays: 30,
+  bufferMinutes: 0,
+  allowCancellation: true,
+  minCancellationHours: 24,
+};
+
 export default async function ConfiguracionPage() {
-  const { business } = await requireBusinessContext();
+  const { supabase, business } = await requireBusinessContext();
+  const settingsRow = await getBookingSettings(supabase, business.id);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/negocio/${business.slug}`;
+
+  const initialSettings: BookingSettingsInput = settingsRow
+    ? {
+        minNoticeMinutes: settingsRow.min_notice_minutes,
+        maxNoticeDays: settingsRow.max_notice_days,
+        bufferMinutes: settingsRow.buffer_minutes,
+        allowCancellation: settingsRow.allow_cancellation,
+        minCancellationHours: settingsRow.min_cancellation_hours,
+      }
+    : DEFAULT_SETTINGS;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -38,6 +62,14 @@ export default async function ConfiguracionPage() {
       </Card>
 
       <Card>
+        <CardTitle>Logo</CardTitle>
+        <CardDescription className="mb-4">
+          Aparece en tu página de reservas. Recomendado: imagen cuadrada, al menos 200×200 px.
+        </CardDescription>
+        <LogoUploader businessName={business.name} initialLogoUrl={business.logo_url} />
+      </Card>
+
+      <Card>
         <CardTitle>Suscripción</CardTitle>
         <CardDescription className="mb-4">
           Plan único de 5 €/mes. La integración de pago (Stripe) llega en la Fase 8.
@@ -50,9 +82,9 @@ export default async function ConfiguracionPage() {
       <Card>
         <CardTitle>Datos del negocio</CardTitle>
         <CardDescription className="mb-4">
-          La edición completa (logo, descripción, dirección) se habilita en la Fase 2.
+          Nombre, teléfono y tipo de negocio se piden en el registro y de momento no son editables.
         </CardDescription>
-        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <dl className="mb-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-ink-400">Nombre</dt>
             <dd className="text-ink-800">{business.name}</dd>
@@ -70,6 +102,22 @@ export default async function ConfiguracionPage() {
             <dd className="text-ink-800">{business.timezone}</dd>
           </div>
         </dl>
+        <BusinessProfileForm
+          initialProfile={{
+            description: business.description ?? "",
+            address: business.address ?? "",
+            city: business.city ?? "",
+          }}
+        />
+      </Card>
+
+      <Card>
+        <CardTitle>Configuración de reservas</CardTitle>
+        <CardDescription className="mb-4">
+          Antelación, descansos entre citas y política de cancelación. Los mensajes automáticos de
+          aviso por WhatsApp llegan en una fase posterior.
+        </CardDescription>
+        <BookingSettingsForm initialSettings={initialSettings} />
       </Card>
     </div>
   );

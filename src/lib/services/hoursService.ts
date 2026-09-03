@@ -19,7 +19,8 @@ export async function listBusinessHours(client: TypedClient, businessId: string)
     .select(HOURS_COLUMNS)
     .eq("business_id", businessId)
     .is("employee_id", null)
-    .order("day_of_week", { ascending: true })) as unknown as {
+    .order("day_of_week", { ascending: true })
+    .order("start_time", { ascending: true })) as unknown as {
     data: BusinessHoursRow[] | null;
     error: { message: string } | null;
   };
@@ -30,9 +31,10 @@ export async function listBusinessHours(client: TypedClient, businessId: string)
 
 /**
  * Sustituye el horario semanal completo del negocio: borra las filas
- * generales existentes y crea una fila por cada día abierto. Es más simple
- * y menos propenso a errores que calcular un diff día a día, y el
- * formulario siempre envía la semana entera.
+ * generales existentes y crea una fila por cada tramo de cada día abierto
+ * (un día con jornada partida genera varias filas con el mismo
+ * `day_of_week`). Es más simple y menos propenso a errores que calcular un
+ * diff tramo a tramo, y el formulario siempre envía la semana entera.
  */
 export async function replaceBusinessHours(
   client: TypedClient,
@@ -46,15 +48,18 @@ export async function replaceBusinessHours(
 
   if (deleteError) throw deleteError;
 
-  const openDays = hours.filter((day) => !day.closed);
-  if (openDays.length === 0) return;
+  const insertPayload: BusinessHoursInsert[] = hours
+    .filter((day) => !day.closed)
+    .flatMap((day) =>
+      day.ranges.map((range) => ({
+        business_id: businessId,
+        day_of_week: day.dayOfWeek,
+        start_time: `${range.startTime}:00`,
+        end_time: `${range.endTime}:00`,
+      })),
+    );
 
-  const insertPayload: BusinessHoursInsert[] = openDays.map((day) => ({
-    business_id: businessId,
-    day_of_week: day.dayOfWeek,
-    start_time: `${day.startTime}:00`,
-    end_time: `${day.endTime}:00`,
-  }));
+  if (insertPayload.length === 0) return;
 
   const { error } = await (client.from("business_hours") as any).insert(insertPayload);
   if (error) throw error;
@@ -62,20 +67,27 @@ export async function replaceBusinessHours(
 
 /**
  * Convierte las filas guardadas en la forma que usa el formulario: un
- * elemento por cada uno de los 7 días (lunes→domingo), marcando
- * `closed: true` en los días sin fila en `business_hours`.
+ * elemento por cada uno de los 7 días (lunes→domingo), agrupando todas las
+ * filas de un mismo día en su lista de tramos (`ranges`), y marcando
+ * `closed: true` en los días sin ninguna fila en `business_hours`.
  */
 export function hoursRowsToWeekly(rows: BusinessHoursRow[]): WeeklyHoursInput {
   return WEEK_DAYS.map(({ dayOfWeek }) => {
-    const row = rows.find((r) => r.day_of_week === dayOfWeek);
-    if (!row) {
-      return { dayOfWeek, closed: true, startTime: "09:00", endTime: "20:00" };
+    const dayRows = rows
+      .filter((r) => r.day_of_week === dayOfWeek)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    if (dayRows.length === 0) {
+      return { dayOfWeek, closed: true, ranges: [] };
     }
+
     return {
       dayOfWeek,
       closed: false,
-      startTime: row.start_time.slice(0, 5),
-      endTime: row.end_time.slice(0, 5),
+      ranges: dayRows.map((row) => ({
+        startTime: row.start_time.slice(0, 5),
+        endTime: row.end_time.slice(0, 5),
+      })),
     };
   });
 }

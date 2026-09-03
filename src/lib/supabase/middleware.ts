@@ -14,6 +14,21 @@ const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/admin"];
  * servidor, en cada Server Component / Route Handler.
  */
 export async function updateSession(request: NextRequest) {
+  // Las peticiones de prefetch de `<Link>` (cabecera `Next-Router-Prefetch`)
+  // no deben disparar aquí una comprobación/renovación de sesión: el
+  // panel tiene varios enlaces en la barra lateral, y Next.js los
+  // prefetchea todos a la vez al montar el layout. Si cada uno de esos
+  // prefetches en paralelo llama a `getUser()` (que puede renovar el
+  // access token), varias renovaciones casi simultáneas usando la misma
+  // cookie de refresh token todavía no actualizada provocan que Supabase
+  // invalide la sesión (rotación de refresh tokens) — el usuario ve un
+  // cierre de sesión aleatorio al navegar por el panel. La autorización
+  // real no se pierde: cada Server Component vuelve a comprobar la sesión
+  // con `requireBusinessContext()`.
+  if (request.headers.get("next-router-prefetch")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   // Se especifica el genérico `<Database>` explícitamente (igual que en
