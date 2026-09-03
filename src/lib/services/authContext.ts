@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database, BusinessMemberRole } from "@/types/database.types";
 
 type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
+type MembershipRow = { business_id: string; role: BusinessMemberRole };
 
 /**
  * Resuelve el usuario autenticado y su negocio principal para las páginas
@@ -47,13 +48,17 @@ export async function requireBusinessContext(): Promise<{
     redirect("/login");
   }
 
-  const { data: membership } = await supabase
+  // Igual que con `businesses` más abajo: se fuerza el tipo del resultado
+  // porque `membership` se reutiliza en la siguiente consulta, y la
+  // inferencia automática de este `select` colapsaba a `never` en el
+  // build de Vercel.
+  const { data: membership } = (await supabase
     .from("business_members")
     .select("business_id, role")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()) as unknown as { data: MembershipRow | null };
 
   if (!membership) {
     redirect("/registro");
