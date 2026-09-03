@@ -121,3 +121,41 @@ export async function getPrimaryBusinessForUser(
   if (!business) return null;
   return { role: membership.role, business };
 }
+
+/**
+ * Devuelve el negocio del usuario autenticado, creándolo si todavía no
+ * existe.
+ *
+ * Es necesaria porque, cuando el proyecto de Supabase exige confirmación
+ * de email, `registerAction` no puede crear el negocio en el momento del
+ * registro (no hay sesión todavía, y RLS exige un usuario autenticado).
+ * En su lugar, los datos del negocio (`business_name`, `business_type`,
+ * `phone`) se guardan en `user_metadata` durante el `signUp`, y esta
+ * función los usa para crear el negocio la primera vez que el usuario
+ * llega autenticado (tras confirmar su email y pasar por
+ * `/auth/callback`, o simplemente al iniciar sesión).
+ */
+export async function ensureBusinessForUser(
+  client: TypedClient,
+  user: { id: string; user_metadata?: Record<string, unknown> | null },
+): Promise<{ role: string; business: BusinessRow } | null> {
+  const existing = await getPrimaryBusinessForUser(client, user.id);
+  if (existing) return existing;
+
+  const metadata = (user.user_metadata ?? {}) as {
+    business_name?: string;
+    business_type?: string;
+    phone?: string;
+  };
+
+  if (!metadata.business_name) return null;
+
+  await createBusinessForOwner(client, {
+    ownerId: user.id,
+    name: metadata.business_name,
+    phone: metadata.phone ?? "",
+    businessType: metadata.business_type ?? "",
+  });
+
+  return getPrimaryBusinessForUser(client, user.id);
+}

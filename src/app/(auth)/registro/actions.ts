@@ -36,11 +36,32 @@ export async function registerAction(
   const { fullName, email, password, businessName, phone, businessType } = parsed.data;
 
   const supabase = await createClient();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, phone } },
+    options: {
+      // `business_name`/`business_type` viajan en los metadatos del
+      // usuario porque, si el proyecto exige confirmación de email, no hay
+      // sesión aquí todavía y RLS impide crear el negocio en este mismo
+      // momento (ver `ensureBusinessForUser` en businessService.ts, que
+      // los usa para crear el negocio en cuanto el usuario llega
+      // autenticado por primera vez).
+      data: {
+        full_name: fullName,
+        phone,
+        business_name: businessName,
+        business_type: businessType,
+      },
+      // A dónde redirige el enlace de confirmación del email. Sin esto,
+      // Supabase usa la "Site URL" configurada en el proyecto y añade
+      // `?code=...`, pero esa página (la landing) no sabe qué hacer con
+      // ese código. Esta URL debe estar además en la lista de "Redirect
+      // URLs" del proyecto de Supabase (Authentication → URL
+      // Configuration), si no la confirmación falla.
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+    },
   });
 
   if (signUpError) {

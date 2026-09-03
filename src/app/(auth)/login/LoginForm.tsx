@@ -23,13 +23,18 @@ export function LoginForm() {
   const [state, formAction] = useFormState(loginAction, initialState);
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "";
+  const urlError = searchParams.get("error");
   const fieldErrors = state.fieldErrors ?? {};
 
   return (
     <form action={formAction} className="space-y-5">
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
-      {state.error && <Alert tone="error">{state.error}</Alert>}
+      {state.error ? (
+        <Alert tone="error">{state.error}</Alert>
+      ) : (
+        urlError && <Alert tone="error">{urlError}</Alert>
+      )}
 
       <div>
         <Label htmlFor="email">Email</Label>
