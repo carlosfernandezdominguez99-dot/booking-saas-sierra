@@ -10,6 +10,7 @@ import { slugify, withRandomSuffix } from "@/lib/utils/slugify";
 type TypedClient = Awaited<ReturnType<typeof createClient>>;
 
 type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
+type MembershipRow = { business_id: string; role: string };
 
 const MAX_SLUG_ATTEMPTS = 5;
 
@@ -71,13 +72,20 @@ export async function getPrimaryBusinessForUser(
   client: TypedClient,
   userId: string,
 ): Promise<{ role: string; business: BusinessRow } | null> {
-  const { data: membership, error: membershipError } = await client
+  // Se fuerza el tipo del resultado porque `membership` se reutiliza en la
+  // siguiente consulta (ver comentario detallado en authContext.ts): la
+  // inferencia automática de este `select` colapsaba a `never` en el
+  // build de Vercel.
+  const { data: membership, error: membershipError } = (await client
     .from("business_members")
     .select("business_id, role")
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()) as unknown as {
+    data: MembershipRow | null;
+    error: { message: string } | null;
+  };
 
   if (membershipError) throw membershipError;
   if (!membership) return null;
