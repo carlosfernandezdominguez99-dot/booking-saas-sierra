@@ -67,3 +67,68 @@ export function addDaysToDateString(dateStr: string, days: number): string {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+/** Fecha de calendario (YYYY-MM-DD) tal como se ve `iso` (timestamptz) en `timeZone`. Inversa de `zonedMidnightToUtcIso`. */
+export function dateStringInTimezone(iso: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+
+  const map: Record<string, string> = {};
+  for (const part of parts) map[part.type] = part.value;
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+/** Suma (o resta) `months` meses de calendario, devolviendo siempre el día 1 de ese mes (YYYY-MM-01). */
+export function addMonthsToDateString(dateStr: string, months: number): string {
+  const [y, m] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1 + months, 1));
+  return date.toISOString().slice(0, 10);
+}
+
+/** Día 1 (YYYY-MM-01) del mes al que pertenece `dateStr`. */
+export function startOfMonth(dateStr: string): string {
+  const [y, m] = dateStr.split("-").map(Number);
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
+/** Lunes (YYYY-MM-DD) de la semana a la que pertenece `dateStr`. Semana de lunes a domingo. */
+export function startOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay(); // 0 = domingo .. 6 = sábado
+  const diff = dow === 0 ? -6 : 1 - dow;
+  date.setUTCDate(date.getUTCDate() + diff);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Semanas completas (lunes a domingo, cada una un array de 7 fechas
+ * YYYY-MM-DD) necesarias para pintar la cuadrícula de un mes en el
+ * calendario del panel — incluye los días de relleno del mes anterior y
+ * siguiente que caen en la primera/última semana visible.
+ */
+export function getMonthGridWeeks(dateStr: string): string[][] {
+  const first = startOfMonth(dateStr);
+  const [y, m] = first.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lastDateStr = `${y}-${String(m).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+
+  const gridStart = startOfWeek(first);
+  const gridEnd = startOfWeek(lastDateStr);
+
+  const weeks: string[][] = [];
+  let cursor = gridStart;
+  while (cursor <= gridEnd) {
+    const week: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      week.push(cursor);
+      cursor = addDaysToDateString(cursor, 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}

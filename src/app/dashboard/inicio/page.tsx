@@ -3,25 +3,23 @@ import { requireBusinessContext } from "@/lib/services/authContext";
 import { listBookingsWithDetails } from "@/lib/services/bookingService";
 import { BookingsList } from "@/components/dashboard/BookingsList";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
-
-const UPCOMING_LIMIT = 5;
+import { zonedMidnightToUtcIso, addDaysToDateString, todayInTimezone } from "@/lib/utils/timezone";
 
 export default async function DashboardInicioPage() {
   const { supabase, business } = await requireBusinessContext();
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(startOfToday);
-  endOfToday.setDate(endOfToday.getDate() + 1);
+  const today = todayInTimezone(business.timezone);
+  const startOfTodayIso = zonedMidnightToUtcIso(today, business.timezone);
+  const endOfTodayIso = zonedMidnightToUtcIso(addDaysToDateString(today, 1), business.timezone);
 
-  const [{ count: todayCount }, { count: customersCount }, { count: totalBookingsCount }, upcomingBookings] =
+  const [{ count: todayCount }, { count: customersCount }, { count: totalBookingsCount }, todayBookings] =
     await Promise.all([
       supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id)
-        .gte("start_time", startOfToday.toISOString())
-        .lt("start_time", endOfToday.toISOString())
+        .gte("start_time", startOfTodayIso)
+        .lt("start_time", endOfTodayIso)
         .not("status", "in", "(cancelled,no_show)"),
       supabase
         .from("customers")
@@ -31,15 +29,17 @@ export default async function DashboardInicioPage() {
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id),
+      // Todas las reservas de HOY (no solo las próximas 5): el negocio
+      // necesita ver de un vistazo el día completo desde la pantalla de
+      // inicio, incluidas las citas de hoy que ya han pasado.
       listBookingsWithDetails(supabase, {
         businessId: business.id,
-        from: new Date().toISOString(),
-        statuses: ["pending", "confirmed"],
+        from: startOfTodayIso,
+        to: endOfTodayIso,
+        statuses: ["pending", "confirmed", "completed", "no_show"],
         order: "asc",
       }),
     ]);
-
-  const nextBookings = upcomingBookings.slice(0, UPCOMING_LIMIT);
 
   const stats = [
     { label: "Citas de hoy", value: todayCount ?? 0 },
@@ -69,15 +69,16 @@ export default async function DashboardInicioPage() {
 
       <Card className="mt-8">
         <div className="mb-4 flex items-center justify-between">
-          <CardTitle>Próximas citas</CardTitle>
-          <Link href="/dashboard/reservas" className="text-sm font-medium text-brand-600 hover:underline">
-            Ver todas
+          <CardTitle>Reservas de hoy</CardTitle>
+          <Link href="/dashboard/calendario" className="text-sm font-medium text-brand-600 hover:underline">
+            Ver calendario
           </Link>
         </div>
         <BookingsList
-          bookings={nextBookings}
+          bookings={todayBookings}
           timezone={business.timezone}
-          emptyMessage="No tienes próximas citas."
+          emptyMessage="No tienes reservas hoy."
+          showCancel
         />
       </Card>
     </div>

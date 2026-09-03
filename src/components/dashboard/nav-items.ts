@@ -1,7 +1,7 @@
 export interface DashboardNavItem {
   href: string;
   label: string;
-  icon: "home" | "calendar" | "list" | "users" | "scissors" | "clock" | "user-group" | "settings";
+  icon: "home" | "calendar" | "list" | "users" | "scissors" | "clock" | "user-group" | "settings" | "chart";
 }
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
@@ -12,5 +12,6 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { href: "/dashboard/servicios", label: "Servicios", icon: "scissors" },
   { href: "/dashboard/horarios", label: "Horarios", icon: "clock" },
   { href: "/dashboard/empleados", label: "Empleados", icon: "user-group" },
+  { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart" },
   { href: "/dashboard/configuracion", label: "Configuración", icon: "settings" },
 ];

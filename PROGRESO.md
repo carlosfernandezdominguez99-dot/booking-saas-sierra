@@ -123,9 +123,57 @@ la llamada como `(client.rpc as any)(...)`.
 
 ---
 
+## ✅ Fase 4 — Dashboard: calendario, reservas, clientes y estadísticas
+
+**Implementado:**
+
+- `src/lib/services/customersService.ts` — `listCustomers()`.
+- `src/lib/services/bookingService.ts` (ampliado) — `listBookings()`,
+  `listBookingsWithDetails()` (une reserva + nombre de cliente + nombre de
+  servicio con consultas planas, sin selects anidados) y `cancelBooking()`.
+- `src/lib/utils/timezone.ts` (ampliado) — además de las utilidades de la
+  Fase 3, ahora incluye `dateStringInTimezone`, `addMonthsToDateString`,
+  `startOfMonth`, `startOfWeek` y `getMonthGridWeeks`, para poder agrupar
+  reservas por día/semana/mes en la zona horaria del negocio.
+- `/dashboard/reservas` — listado con pestañas Próximas / Pasadas /
+  Canceladas y botón de cancelar reserva.
+- `/dashboard/calendario` — vista de **Día** (agenda), **Semana** (7
+  columnas con resumen por día) y **Mes** (cuadrícula con nº de reservas
+  por día, clicable para ir directo a esa jornada), con navegación
+  Anterior/Siguiente adaptada a la vista activa y un selector de fecha en
+  popover (`CalendarPicker`) para saltar directamente a mes/año/día
+  concretos.
+- `/dashboard/clientes` — listado de clientes con nº de reservas y última
+  visita, con buscador por nombre/teléfono.
+- `/dashboard/inicio` — ahora muestra **todas** las reservas de hoy (antes
+  mostraba solo las próximas 5), además de los contadores existentes.
+- `/dashboard/estadisticas` (nueva sección, pedida por Carlos) —
+  `src/lib/services/statsService.ts` calcula, agregando en memoria sobre
+  todas las reservas/clientes del negocio (sin funciones SQL nuevas):
+  clientes totales, reservas totales, ingresos totales y ticket medio
+  (solo reservas confirmadas/completadas), tasa de cancelación, servicios
+  más populares, cada cuánto vuelve un cliente a por cada servicio,
+  ranking de clientes por nº de visitas, ranking de clientes más
+  frecuentes (menor intervalo medio entre visitas) y reservas por día de
+  la semana.
+- Nuevo icono "chart" y entrada "Estadísticas" en la barra lateral
+  (`nav-items.ts` / `Icon.tsx`).
+
+**Decisiones de tipado:** en `/dashboard/reservas/page.tsx` se construye el
+objeto de filtros con un `let` tipado explícitamente y ramas `if/else` en
+vez de spreads condicionales (`...(cond && {...})`), porque ese patrón le
+hace perder a TypeScript el tipo literal de `statuses`/`order` — ver el
+comentario en el propio archivo.
+
+**⚠️ Pendiente de confirmar por Carlos:** que el build de Vercel con todos
+estos archivos termina sin errores, y una prueba manual de las tres vistas
+del calendario, el selector de fecha y la nueva sección de estadísticas
+con datos reales.
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 4 — Dashboard + calendario + clientes
 - [ ] Fase 5 — Página pública de reservas
 - [ ] Fase 6 — PWA + responsive + UX
 - [ ] Fase 7 — Preparación WhatsApp
