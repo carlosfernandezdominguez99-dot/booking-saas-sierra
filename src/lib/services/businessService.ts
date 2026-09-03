@@ -10,6 +10,7 @@ import { slugify, withRandomSuffix } from "@/lib/utils/slugify";
 type TypedClient = Awaited<ReturnType<typeof createClient>>;
 
 type BusinessRow = Database["public"]["Tables"]["businesses"]["Row"];
+type BusinessInsert = Database["public"]["Tables"]["businesses"]["Insert"];
 type MembershipRow = { business_id: string; role: string };
 
 const MAX_SLUG_ATTEMPTS = 5;
@@ -30,17 +31,30 @@ export async function createBusinessForOwner(
   while (attempt < MAX_SLUG_ATTEMPTS) {
     const candidateSlug = attempt === 0 ? baseSlug : withRandomSuffix(baseSlug);
 
-    const { data, error } = await client
-      .from("businesses")
-      .insert({
-        owner_id: params.ownerId,
-        name: params.name,
-        slug: candidateSlug,
-        phone: params.phone,
-        business_type: params.businessType,
-      })
+    // El objeto a insertar se tipa por separado contra `BusinessInsert`
+    // (para detectar typos/columnas inexistentes en este archivo), y la
+    // llamada a `.insert(...)` en sí se hace sobre el query builder "sin
+    // tipar" (`as any` solo en el acceso a la tabla) y el resultado final
+    // se fuerza al shape que realmente esperamos. Esto evita depender de
+    // cómo resuelve @supabase/supabase-js el genérico de `insert()` para
+    // esta tabla, que en algún build de Vercel llegó a colapsar a
+    // `never[]` pese a que `Database["businesses"]["Insert"]` es correcto
+    // (ver la nota larga en `database.types.ts`).
+    const insertPayload: BusinessInsert = {
+      owner_id: params.ownerId,
+      name: params.name,
+      slug: candidateSlug,
+      phone: params.phone,
+      business_type: params.businessType,
+    };
+
+    const { data, error } = (await (client.from("businesses") as any)
+      .insert(insertPayload)
       .select("id, slug")
-      .single();
+      .single()) as unknown as {
+      data: { id: string; slug: string } | null;
+      error: { message: string; code?: string } | null;
+    };
 
     if (!error) {
       return data;
