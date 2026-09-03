@@ -1,5 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import type { Database } from "@/types/database.types";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/admin"];
 
@@ -15,7 +16,12 @@ const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/admin"];
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
+  // Se especifica el genérico `<Database>` explícitamente (igual que en
+  // `lib/supabase/server.ts`) y se anota el parámetro de `setAll` a mano:
+  // sin ambas cosas, TypeScript no consigue dar contexto de tipos a los
+  // parámetros de los callbacks de `cookies` aquí y `next build` falla con
+  // "implicitly has an 'any' type" bajo `strict`.
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -23,7 +29,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
