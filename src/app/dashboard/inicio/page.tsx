@@ -1,5 +1,10 @@
+import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { listBookingsWithDetails } from "@/lib/services/bookingService";
+import { BookingsList } from "@/components/dashboard/BookingsList";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+
+const UPCOMING_LIMIT = 5;
 
 export default async function DashboardInicioPage() {
   const { supabase, business } = await requireBusinessContext();
@@ -9,7 +14,7 @@ export default async function DashboardInicioPage() {
   const endOfToday = new Date(startOfToday);
   endOfToday.setDate(endOfToday.getDate() + 1);
 
-  const [{ count: todayCount }, { count: customersCount }, { count: totalBookingsCount }] =
+  const [{ count: todayCount }, { count: customersCount }, { count: totalBookingsCount }, upcomingBookings] =
     await Promise.all([
       supabase
         .from("bookings")
@@ -26,7 +31,15 @@ export default async function DashboardInicioPage() {
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id),
+      listBookingsWithDetails(supabase, {
+        businessId: business.id,
+        from: new Date().toISOString(),
+        statuses: ["pending", "confirmed"],
+        order: "asc",
+      }),
     ]);
+
+  const nextBookings = upcomingBookings.slice(0, UPCOMING_LIMIT);
 
   const stats = [
     { label: "Citas de hoy", value: todayCount ?? 0 },
@@ -55,13 +68,17 @@ export default async function DashboardInicioPage() {
       </div>
 
       <Card className="mt-8">
-        <CardTitle>Próximas citas</CardTitle>
-        <CardDescription className="mb-4">
-          El calendario y el listado completo de reservas llegan en la siguiente fase.
-        </CardDescription>
-        <div className="rounded-xl border border-dashed border-ink-200 py-10 text-center text-sm text-ink-400">
-          Todavía no hay nada que mostrar aquí — se implementa en la Fase 4 (Dashboard + calendario + clientes).
+        <div className="mb-4 flex items-center justify-between">
+          <CardTitle>Próximas citas</CardTitle>
+          <Link href="/dashboard/reservas" className="text-sm font-medium text-brand-600 hover:underline">
+            Ver todas
+          </Link>
         </div>
+        <BookingsList
+          bookings={nextBookings}
+          timezone={business.timezone}
+          emptyMessage="No tienes próximas citas."
+        />
       </Card>
     </div>
   );

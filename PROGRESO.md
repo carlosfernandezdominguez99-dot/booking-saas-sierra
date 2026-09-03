@@ -109,23 +109,17 @@ Fase 5 (reserva pública).
   - `cancelBooking()` — cancelación manual desde el panel (la cancelación
     por WhatsApp con lista de espera es la Fase 7).
 
-**Pendiente de verificar por ti:** no tengo acceso a las credenciales de
-tu proyecto de Supabase desde este entorno, así que no he podido ejecutar
-estas funciones contra datos reales yo mismo. Como comprobación rápida,
-en el **SQL Editor** de Supabase puedes ejecutar (con un `business_id` y
-`service_id` reales de los tuyos):
+**Verificado por Carlos (SQL Editor, con datos reales):** `get_available_slots`
+devuelve huecos de 30 min cada 15 min entre las 07:00–18:00 UTC (= 09:00–20:00
+hora de Madrid, conversión de zona horaria correcta) para un día laborable,
+respetando la duración del servicio y el horario configurado. Motor
+confirmado funcionando en producción.
 
-```sql
-select * from get_available_slots(
-  '<business_id>'::uuid,
-  '<service_id>'::uuid,
-  current_date + 1
-);
-```
-
-Si devuelve huecos con sentido (respetando tu horario), el motor
-funciona — mi código en TypeScript es un envoltorio fiel de esa misma
-función, revisado línea a línea contra su firma exacta.
+**Corregido durante la fase:** el build de Vercel falló al añadir estos
+dos archivos (`client.rpc(...)` no resolvía el overload de argumentos —
+mismo tipo de fallo de inferencia de tipos que motivó los `as any` en
+`.insert()`/`.update()`, ver `database.types.ts`). Se arregló envolviendo
+la llamada como `(client.rpc as any)(...)`.
 
 ---
 

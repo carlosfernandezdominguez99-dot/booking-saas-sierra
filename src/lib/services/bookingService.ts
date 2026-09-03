@@ -93,6 +93,8 @@ export interface ListBookingsParams {
   /** ISO timestamptz, exclusive. */
   to?: string;
   statuses?: BookingStatus[];
+  /** Orden por `start_time`. Por defecto ascendente. */
+  order?: "asc" | "desc";
 }
 
 /**
@@ -116,7 +118,9 @@ export async function listBookings(client: TypedClient, params: ListBookingsPara
   if (params.to) query = query.lt("start_time", params.to);
   if (params.statuses && params.statuses.length > 0) query = query.in("status", params.statuses);
 
-  const { data, error } = (await query.order("start_time", { ascending: true })) as unknown as {
+  const { data, error } = (await query.order("start_time", {
+    ascending: params.order !== "desc",
+  })) as unknown as {
     data: BookingRow[] | null;
     error: { message: string } | null;
   };
@@ -134,4 +138,86 @@ export async function listBookings(client: TypedClient, params: ListBookingsPara
 export async function cancelBooking(client: TypedClient, bookingId: string): Promise<void> {
   const { error } = await (client.from("bookings") as any).update({ status: "cancelled" }).eq("id", bookingId);
   if (error) throw error;
+}
+
+export interface BookingWithDetails {
+  id: string;
+  startTime: string;
+  endTime: string;
+  status: BookingStatus;
+  comment: string | null;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  serviceId: string;
+  serviceName: string;
+  priceCents: number;
+  durationMinutes: number;
+}
+
+/**
+ * Igual que `listBookings`, pero añade el nombre del cliente y del
+ * servicio para mostrar en el calendario/listado del panel (Fase 4).
+ *
+ * Se hace con consultas planas + un merge en memoria, en vez de un select
+ * anidado (`bookings(*, customers(name), services(name))`): nuestros
+ * tipos de Supabase están escritos a mano y no incluyen metadatos de
+ * relaciones — ver el comentario equivalente en `businessService.ts` /
+ * `authContext.ts`. Con el volumen de reservas de un negocio pequeño esto
+ * es más que suficiente; si hiciera falta paginar en el futuro, este es
+ * el sitio a revisar primero.
+ */
+export async function listBookingsWithDetails(
+  client: TypedClient,
+  params: ListBookingsParams,
+): Promise<BookingWithDetails[]> {
+  const bookings = await listBookings(client, params);
+  if (bookings.length === 0) return [];
+
+  const customerIds = [...new Set(bookings.map((b) => b.customer_id))];
+  const serviceIds = [...new Set(bookings.map((b) => b.service_id))];
+
+  // `as any` en el acceso a ambas tablas, por el mismo motivo que en
+  // `listBookings` de este mismo archivo (ver nota de arriba).
+  const [{ data: customers, error: customersError }, { data: services, error: servicesError }] = await Promise.all([
+    (client.from("customers") as any)
+      .select("id, name, phone")
+      .eq("business_id", params.businessId)
+      .in("id", customerIds) as unknown as Promise<{
+      data: { id: string; name: string; phone: string }[] | null;
+      error: { message: string } | null;
+    }>,
+    (client.from("services") as any)
+      .select("id, name, price_cents, duration_minutes")
+      .eq("business_id", params.businessId)
+      .in("id", serviceIds) as unknown as Promise<{
+      data: { id: string; name: string; price_cents: number; duration_minutes: number }[] | null;
+      error: { message: string } | null;
+    }>,
+  ]);
+
+  if (customersError) throw customersError;
+  if (servicesError) throw servicesError;
+
+  const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
+  const serviceById = new Map((services ?? []).map((s) => [s.id, s]));
+
+  return bookings.map((b) => {
+    const customer = customerById.get(b.customer_id);
+    const service = serviceById.get(b.service_id);
+    return {
+      id: b.id,
+      startTime: b.start_time,
+      endTime: b.end_time,
+      status: b.status,
+      comment: b.comment,
+      customerId: b.customer_id,
+      customerName: customer?.name ?? "Cliente eliminado",
+      customerPhone: customer?.phone ?? "—",
+      serviceId: b.service_id,
+      serviceName: service?.name ?? "Servicio eliminado",
+      priceCents: service?.price_cents ?? 0,
+      durationMinutes: service?.duration_minutes ?? 0,
+    };
+  });
 }
