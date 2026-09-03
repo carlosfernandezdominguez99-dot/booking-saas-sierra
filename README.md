@@ -1,4 +1,4 @@
-# Booking SaaS
+# ZoriaBooking
 
 Sistema de reservas online para pequeños negocios (peluquerías, barberías,
 centros de estética, fisioterapia, academias, autoescuelas, entrenadores

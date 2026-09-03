@@ -10,8 +10,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Booking SaaS — Reservas sencillas para tu negocio",
-    template: "%s · Booking SaaS",
+    default: "ZoriaBooking — Reservas sencillas para tu negocio",
+    template: "%s · ZoriaBooking",
   },
   description:
     "Sistema de reservas online para peluquerías, barberías, centros de estética, fisioterapia y más. Tus clientes reservan sin cuenta, tú lo gestionas todo desde un panel simple.",

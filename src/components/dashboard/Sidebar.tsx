@@ -13,7 +13,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
     <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-100 bg-white px-4 py-6 md:flex">
       <div className="mb-8 px-2">
         <p className="text-sm font-semibold tracking-tight text-ink-900">
-          Booking<span className="text-brand-500">SaaS</span>
+          Zoria<span className="text-brand-500">Booking</span>
         </p>
         <p className="mt-1 truncate text-xs text-ink-500">{businessName}</p>
       </div>

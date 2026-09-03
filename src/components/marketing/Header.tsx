@@ -6,7 +6,7 @@ export function MarketingHeader() {
     <header className="sticky top-0 z-40 border-b border-ink-100/80 bg-surface/80 backdrop-blur-md">
       <div className="container-app flex h-16 items-center justify-between">
         <Link href="/" className="text-[15px] font-semibold tracking-tight text-ink-900">
-          Booking<span className="text-brand-500">SaaS</span>
+          Zoria<span className="text-brand-500">Booking</span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm text-ink-600 md:flex">

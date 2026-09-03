@@ -12,7 +12,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="text-sm font-semibold tracking-tight text-ink-900">
-            Booking<span className="text-brand-500">SaaS</span>
+            Zoria<span className="text-brand-500">Booking</span>
           </Link>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink-950">
             Bienvenido de nuevo
