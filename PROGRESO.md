@@ -224,8 +224,9 @@ antelación, esos días de más simplemente no muestran huecos (el motor los
 descarta igualmente), no es un fallo, solo una franja que no hace falta
 mostrar.
 
-**⚠️ Pendiente de confirmar por Carlos:** build de Vercel limpio, y una
-reserva real de principio a fin contra `/negocio/tu-slug`.
+**✅ Verificado por Carlos**: build de Vercel limpio y reserva real de
+principio a fin contra `/negocio/tu-slug` (elegir servicio, huecos, datos
+de contacto y confirmación) funcionando correctamente. **Fase 5 cerrada.**
 
 ---
 
