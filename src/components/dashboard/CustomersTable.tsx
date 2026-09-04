@@ -84,7 +84,11 @@ export function CustomersTable({ customers, timezone }: { customers: CustomerRow
         <p className="py-8 text-center text-sm text-ink-400">Ningún cliente coincide con esa búsqueda.</p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* Escritorio/tablet: tabla normal. En móvil se oculta y se */}
+          {/* sustituye por tarjetas (debajo) — una tabla con 4 columnas no */}
+          {/* cabe en una pantalla estrecha sin cortarse o requerir scroll */}
+          {/* horizontal. */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400">
@@ -108,6 +112,28 @@ export function CustomersTable({ customers, timezone }: { customers: CustomerRow
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Móvil: una tarjeta por cliente, sin scroll horizontal. */}
+          <div className="space-y-2.5 sm:hidden">
+            {paged.map((customer) => (
+              <div key={customer.id} className="rounded-xl border border-ink-100 p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink-900">{customer.name}</p>
+                    <p className="text-sm text-ink-500">{customer.phone}</p>
+                    {customer.email && <p className="truncate text-xs text-ink-400">{customer.email}</p>}
+                  </div>
+                  <div className="shrink-0 text-right text-xs text-ink-500">
+                    <p className="text-sm font-semibold text-ink-900">{customer.bookingsCount}</p>
+                    <p>{customer.bookingsCount === 1 ? "reserva" : "reservas"}</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-ink-400">
+                  Última visita: {formatLastVisit(customer.lastVisit, timezone)}
+                </p>
+              </div>
+            ))}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">

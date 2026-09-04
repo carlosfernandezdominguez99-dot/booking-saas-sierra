@@ -1,7 +1,7 @@
 export interface DashboardNavItem {
   href: string;
   label: string;
-  icon: "home" | "calendar" | "list" | "users" | "scissors" | "clock" | "user-group" | "settings" | "chart";
+  icon: "home" | "calendar" | "list" | "users" | "scissors" | "clock" | "user-group" | "settings" | "chart" | "more";
 }
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
