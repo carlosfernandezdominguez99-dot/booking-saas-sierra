@@ -14,9 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/dashboard/inicio",
     display: "standalone",
     // Color de fondo de la pantalla de carga (splash) al abrir la app
-    // instalada: en blanco, a juego con el fondo de los iconos — antes en
-    // negro, se veía como un cuadro oscuro detrás del logo al abrir.
-    background_color: "#ffffff",
+    // instalada — a juego con el fondo oscuro de marca que llevan los
+    // iconos (ver public/icon-*.png).
+    background_color: "#0c0c0e",
     theme_color: "#0c0c0e",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
