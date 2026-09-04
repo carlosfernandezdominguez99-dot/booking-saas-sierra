@@ -13,12 +13,10 @@ export const publicBookingContactSchema = z.object({
     .trim()
     .min(6, "Introduce un teléfono válido")
     .max(20, "Ese teléfono no parece válido"),
-  customerEmail: z
-    .string()
-    .trim()
-    .email("Introduce un email válido")
-    .optional()
-    .or(z.literal("")),
+  // Obligatorio: mientras no haya WhatsApp real conectado, el email es el
+  // único canal real para avisar de la confirmación, una cancelación o una
+  // oferta de lista de espera (ver `emailService.ts`).
+  customerEmail: z.string().trim().min(1, "Introduce tu email").email("Introduce un email válido"),
   comment: z.string().trim().max(300, "Máximo 300 caracteres").optional().or(z.literal("")),
 });
 

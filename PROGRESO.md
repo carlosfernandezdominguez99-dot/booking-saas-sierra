@@ -354,6 +354,53 @@ hueco sigue libre, por si acaso.
 
 ---
 
+## ✅ Fase 7.1 — Email como canal real de avisos (mientras no haya WhatsApp)
+
+Pediste que, mientras no haya WhatsApp real, los avisos (confirmación,
+cancelación, oferta de hueco libre) se manden por **email**, pidiéndolo
+como dato obligatorio al reservar. Implementado:
+
+- `src/lib/email/emailService.ts` (nuevo) — capa de email, mismo patrón
+  que `whatsappService.ts`: usa la API HTTP de Resend directamente (sin
+  SDK) y, si `RESEND_API_KEY` no está configurada, deja un log (mock) en
+  vez de fingir un envío real. Funciones: `sendBookingConfirmationEmail`,
+  `sendCancellationEmail`, `sendWaitlistOfferEmail`.
+- **El email pasa a ser obligatorio** en el formulario público de reserva
+  (`publicBookingContactSchema` / `BookingWizard.tsx`) — antes era
+  opcional. Los clientes añadidos a mano desde el panel (lista de espera)
+  siguen pudiendo dejarlo en blanco, ya que quien llama por teléfono puede
+  no tenerlo a mano.
+- `supabase/migrations/0007_waitlist_email.sql` (nueva, **hay que
+  ejecutarla en el SQL Editor**) — las funciones de la lista de espera
+  (`offer_waitlist_slot`, `offer_next_waitlist_candidate`,
+  `respond_to_waitlist_offer`) ahora también devuelven el email del
+  cliente, para poder avisarle por correo además del enlace mockeado de
+  WhatsApp.
+- Conectado en los tres puntos donde ya se avisaba (o debía avisarse):
+  - Al confirmar una reserva pública → email de confirmación.
+  - Al cancelar una cita desde el panel → email de cancelación al cliente
+    (antes esto no se avisaba en ningún canal).
+  - Al ofertar un hueco liberado a la lista de espera (tanto al cancelar
+    como en la cadena de rechazos) → email con el enlace de
+    aceptar/rechazar, si el cliente tiene email guardado.
+  - Al aceptar una oferta desde el enlace público → email de confirmación
+    de la nueva cita, igual que una reserva normal.
+- Todos los envíos son best-effort (try/catch aparte): si el email
+  fallara, la reserva/cancelación/oferta ya hecha no se deshace ni se
+  muestra como error.
+
+**Pendiente de tu lado para que los emails salgan de verdad:** crear una
+cuenta gratuita en [resend.com](https://resend.com), coger la API key y
+pasármela como variable de entorno `RESEND_API_KEY` en Vercel. Sin eso,
+todo sigue funcionando igual que hasta ahora pero solo con logs (como
+WhatsApp). Para poder enviar a cualquier destinatario (no solo a tu propio
+email de la cuenta de Resend) hace falta además verificar un dominio
+propio ahí — mientras tanto se puede probar con el remitente de pruebas
+de Resend, pero solo llegará a la dirección con la que te registraste en
+Resend.
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 8 — Suscripciones/Stripe preparado

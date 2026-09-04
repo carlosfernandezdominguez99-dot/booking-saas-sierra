@@ -192,6 +192,8 @@ export interface WaitlistOffer {
   entryId: string;
   customerName: string;
   customerPhone: string;
+  /** Puede faltar en entradas antiguas o añadidas a mano sin email. */
+  customerEmail: string | null;
   serviceName: string;
   offeredStartTime: string;
   offeredEndTime: string;
@@ -216,6 +218,7 @@ export async function offerNextWaitlistCandidate(
           entry_id: string;
           customer_name: string;
           customer_phone: string;
+          customer_email: string | null;
           service_name: string;
           offered_start_time: string;
           offered_end_time: string;
@@ -233,6 +236,7 @@ export async function offerNextWaitlistCandidate(
     entryId: offer.entry_id,
     customerName: offer.customer_name,
     customerPhone: offer.customer_phone,
+    customerEmail: offer.customer_email,
     serviceName: offer.service_name,
     offeredStartTime: offer.offered_start_time,
     offeredEndTime: offer.offered_end_time,
@@ -246,6 +250,9 @@ export interface RespondToWaitlistOfferResult {
   result: WaitlistResponseResult;
   /** Nombre del negocio — presente salvo cuando `result` es `not_found`. */
   businessName?: string;
+  /** Datos de quien responde — para poder enviarle un email de confirmación al aceptar. */
+  customerName?: string;
+  customerEmail?: string | null;
   booking?: {
     bookingId: string;
     serviceName: string;
@@ -278,9 +285,12 @@ export async function respondToWaitlistOffer(
           service_name: string | null;
           start_time: string | null;
           end_time: string | null;
+          customer_name: string | null;
+          customer_email: string | null;
           next_entry_id: string | null;
           next_customer_name: string | null;
           next_customer_phone: string | null;
+          next_customer_email: string | null;
           next_service_name: string | null;
           next_offered_start_time: string | null;
           next_offered_end_time: string | null;
@@ -294,7 +304,12 @@ export async function respondToWaitlistOffer(
   const row = data?.[0];
   if (!row) return { result: "not_found" };
 
-  const out: RespondToWaitlistOfferResult = { result: row.result, businessName: row.business_name ?? undefined };
+  const out: RespondToWaitlistOfferResult = {
+    result: row.result,
+    businessName: row.business_name ?? undefined,
+    customerName: row.customer_name ?? undefined,
+    customerEmail: row.customer_email,
+  };
 
   if (row.result === "accepted" && row.booking_id && row.service_name && row.start_time && row.end_time) {
     out.booking = {
@@ -318,6 +333,7 @@ export async function respondToWaitlistOffer(
       entryId: row.next_entry_id,
       customerName: row.next_customer_name,
       customerPhone: row.next_customer_phone,
+      customerEmail: row.next_customer_email,
       serviceName: row.next_service_name,
       offeredStartTime: row.next_offered_start_time,
       offeredEndTime: row.next_offered_end_time,

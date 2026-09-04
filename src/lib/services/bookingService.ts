@@ -15,7 +15,12 @@ export interface CreatePublicBookingParams {
   customerName: string;
   customerPhone: string;
   employeeId?: string | null;
-  customerEmail?: string | null;
+  /**
+   * Obligatorio desde que el email pasó a ser el canal real de avisos
+   * (confirmación/cancelación/lista de espera) mientras no haya WhatsApp
+   * real conectado — ver `publicBookingContactSchema` y `emailService.ts`.
+   */
+  customerEmail: string;
   comment?: string | null;
 }
 
@@ -140,6 +145,57 @@ export async function listBookings(client: TypedClient, params: ListBookingsPara
 export async function cancelBooking(client: TypedClient, bookingId: string): Promise<void> {
   const { error } = await (client.from("bookings") as any).update({ status: "cancelled" }).eq("id", bookingId);
   if (error) throw error;
+}
+
+export interface BookingContactInfo {
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string;
+  serviceName: string;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Datos mínimos de contacto de una reserva (cliente + servicio + horario),
+ * pensados para poder enviar un aviso (email de cancelación, de momento)
+ * justo antes o después de cancelarla — `cancelBooking` solo cambia el
+ * estado, así que quien la cancela necesita esto aparte si quiere avisar
+ * al cliente. Mismo patrón de consultas planas + merge en memoria que
+ * `listBookingsWithDetails`.
+ */
+export async function getBookingContactInfo(
+  client: TypedClient,
+  bookingId: string,
+): Promise<BookingContactInfo | null> {
+  const { data: booking, error } = (await (client.from("bookings") as any)
+    .select("customer_id, service_id, start_time, end_time")
+    .eq("id", bookingId)
+    .maybeSingle()) as unknown as {
+    data: { customer_id: string; service_id: string; start_time: string; end_time: string } | null;
+    error: { message: string } | null;
+  };
+  if (error) throw error;
+  if (!booking) return null;
+
+  const [{ data: customer }, { data: service }] = await Promise.all([
+    (client.from("customers") as any)
+      .select("name, phone, email")
+      .eq("id", booking.customer_id)
+      .maybeSingle() as unknown as Promise<{ data: { name: string; phone: string; email: string | null } | null }>,
+    (client.from("services") as any).select("name").eq("id", booking.service_id).maybeSingle() as unknown as Promise<{
+      data: { name: string } | null;
+    }>,
+  ]);
+
+  return {
+    customerName: customer?.name ?? "Cliente eliminado",
+    customerEmail: customer?.email ?? null,
+    customerPhone: customer?.phone ?? "—",
+    serviceName: service?.name ?? "Servicio eliminado",
+    startTime: booking.start_time,
+    endTime: booking.end_time,
+  };
 }
 
 export interface BookingWithDetails {

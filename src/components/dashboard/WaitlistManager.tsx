@@ -29,7 +29,7 @@ function formatOfferedSlot(iso: string, timezone: string): string {
   return new Date(iso).toLocaleTimeString("es-ES", { timeZone: timezone, hour: "2-digit", minute: "2-digit" });
 }
 
-const EMPTY_DRAFT = { customerName: "", customerPhone: "", serviceId: "", preferredDate: "" };
+const EMPTY_DRAFT = { customerName: "", customerPhone: "", customerEmail: "", serviceId: "", preferredDate: "" };
 
 export function WaitlistManager({
   initialEntries,
@@ -114,6 +114,15 @@ export function WaitlistManager({
             />
           </div>
           <div>
+            <Label>Email (opcional)</Label>
+            <Input
+              type="email"
+              value={draft.customerEmail}
+              onChange={(e) => setDraft((d) => ({ ...d, customerEmail: e.target.value }))}
+              placeholder="Para poder avisarle si le toca hueco"
+            />
+          </div>
+          <div>
             <Label>Servicio</Label>
             <select
               value={draft.serviceId}
@@ -178,8 +187,8 @@ export function WaitlistManager({
                     )}
                     {entry.status === "offered" && (
                       <p className="mt-1 text-[11px] text-ink-400">
-                        Mientras no esté conectado el WhatsApp real, este es el único sitio para
-                        conseguir el enlace de la oferta.
+                        Si tiene email se le ha avisado por correo automáticamente. Puedes copiar
+                        el enlace aquí para reenviarlo a mano (por ejemplo, por WhatsApp).
                       </p>
                     )}
                     {rowError[entry.id] && <p className="mt-1 text-xs text-red-600">{rowError[entry.id]}</p>}

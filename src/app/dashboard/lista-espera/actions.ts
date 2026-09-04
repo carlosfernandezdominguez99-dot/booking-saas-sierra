@@ -12,6 +12,13 @@ export interface AddToWaitlistInput {
   preferredDate: string;
   customerName: string;
   customerPhone: string;
+  /**
+   * Opcional aquí (a diferencia del formulario público de reserva): quien
+   * apunta a alguien a mano tras una llamada puede no tener su email a
+   * mano. Sin él, si le toca un hueco solo se le podrá avisar por
+   * WhatsApp (mock) — ver `emailService.ts`.
+   */
+  customerEmail?: string;
 }
 
 /**
@@ -25,8 +32,10 @@ export async function addToWaitlistAction(input: AddToWaitlistInput): Promise<Ad
 
   const name = input.customerName.trim();
   const phone = input.customerPhone.trim();
+  const email = input.customerEmail?.trim() ?? "";
   if (name.length < 2) return { error: "Escribe el nombre del cliente." };
   if (phone.length < 6) return { error: "Escribe un teléfono válido." };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Ese email no parece válido." };
   if (!input.serviceId) return { error: "Elige un servicio." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.preferredDate)) return { error: "Elige una fecha." };
 
@@ -37,6 +46,7 @@ export async function addToWaitlistAction(input: AddToWaitlistInput): Promise<Ad
       preferredDate: input.preferredDate,
       customerName: name,
       customerPhone: phone,
+      customerEmail: input.customerEmail?.trim() || null,
     });
     revalidatePath("/dashboard/lista-espera");
     return { data };

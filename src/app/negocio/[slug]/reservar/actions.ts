@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlots, type AvailableSlot } from "@/lib/services/availabilityService";
 import { createPublicBooking, type PublicBookingResult } from "@/lib/services/bookingService";
 import { sendBookingConfirmation } from "@/lib/whatsapp/whatsappService";
+import { sendBookingConfirmationEmail } from "@/lib/email/emailService";
 import { publicBookingContactSchema } from "@/lib/validations/publicBooking";
 
 export interface GetSlotsActionInput {
@@ -50,7 +51,8 @@ export interface CreatePublicBookingActionInput {
   startTime: string;
   customerName: string;
   customerPhone: string;
-  customerEmail?: string;
+  /** Obligatorio — ver `publicBookingContactSchema`. */
+  customerEmail: string;
   comment?: string;
 }
 
@@ -73,7 +75,7 @@ export async function createPublicBookingAction(
   const parsed = publicBookingContactSchema.safeParse({
     customerName: input.customerName,
     customerPhone: input.customerPhone,
-    customerEmail: input.customerEmail ?? "",
+    customerEmail: input.customerEmail,
     comment: input.comment ?? "",
   });
 
@@ -94,17 +96,32 @@ export async function createPublicBookingAction(
       startTime: input.startTime,
       customerName: parsed.data.customerName,
       customerPhone: parsed.data.customerPhone,
-      customerEmail: parsed.data.customerEmail || null,
+      customerEmail: parsed.data.customerEmail,
       comment: parsed.data.comment || null,
     });
 
-    // "Envío" de confirmación por WhatsApp — hoy es un mock que solo deja
-    // un log (la integración real llega en la Fase 7). Es un intento
-    // aparte, a propósito: si fallara, la reserva ya está creada y no debe
-    // deshacerse ni mostrarse como un error al cliente.
+    // "Envío" de confirmación por WhatsApp — sigue siendo un mock que solo
+    // deja un log (no hay cuenta de WhatsApp Business API conectada
+    // todavía). Es un intento aparte, a propósito: si fallara, la reserva
+    // ya está creada y no debe deshacerse ni mostrarse como un error al
+    // cliente.
     try {
       await sendBookingConfirmation({
         toPhone: parsed.data.customerPhone,
+        customerName: parsed.data.customerName,
+        businessName: result.businessName,
+        serviceName: result.serviceName,
+        startTimeIso: result.startTime,
+      });
+    } catch {
+      // No-op: best-effort.
+    }
+
+    // Confirmación por email — este sí es el canal real mientras tanto
+    // (ver `emailService.ts`). Mismo motivo para el try/catch aparte.
+    try {
+      await sendBookingConfirmationEmail({
+        toEmail: parsed.data.customerEmail,
         customerName: parsed.data.customerName,
         businessName: result.businessName,
         serviceName: result.serviceName,

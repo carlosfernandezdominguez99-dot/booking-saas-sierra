@@ -507,6 +507,7 @@ export interface Database {
           entry_id: string;
           customer_name: string;
           customer_phone: string;
+          customer_email: string | null;
           service_name: string;
           offered_start_time: string;
           offered_end_time: string;
@@ -522,9 +523,12 @@ export interface Database {
           service_name: string | null;
           start_time: string | null;
           end_time: string | null;
+          customer_name: string | null;
+          customer_email: string | null;
           next_entry_id: string | null;
           next_customer_name: string | null;
           next_customer_phone: string | null;
+          next_customer_email: string | null;
           next_service_name: string | null;
           next_offered_start_time: string | null;
           next_offered_end_time: string | null;

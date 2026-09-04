@@ -335,10 +335,11 @@ export function BookingWizard({
             <div>
               <Input
                 type="email"
-                placeholder="Email (opcional)"
+                placeholder="Tu email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={fieldErrors.customerEmail}
+                required
               />
               <FieldError message={fieldErrors.customerEmail} />
             </div>
@@ -382,7 +383,7 @@ export function BookingWizard({
             </p>
           </div>
           <p className="text-xs text-ink-400">
-            Te avisaremos por WhatsApp con los detalles de tu cita.
+            Te hemos enviado un email de confirmación con los detalles de tu cita.
           </p>
           <Link href={`/negocio/${slug}`} className="inline-block text-sm font-medium text-brand-600 hover:underline">
             Volver a la página de {businessName}
