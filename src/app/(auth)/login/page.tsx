@@ -20,7 +20,7 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex flex-col items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-mark.jpg" alt="ZoriaBooking" className="h-12 w-12 rounded-xl" />
+            <img src="/logo-mark.png" alt="ZoriaBooking" className="h-12 w-12" />
             <span className="text-sm font-semibold tracking-tight text-white">
               Zoria<span className="text-brand-400">Booking</span>
             </span>

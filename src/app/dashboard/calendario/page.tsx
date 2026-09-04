@@ -213,45 +213,52 @@ export default async function CalendarioPage({
       )}
 
       {view === "month" && monthWeeks && (
-        <Card className="overflow-x-auto">
-          <div className="min-w-[640px]">
-            <div className="grid grid-cols-7 gap-1 pb-2 text-center text-xs font-medium uppercase tracking-wide text-ink-400">
-              {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((w) => (
-                <span key={w}>{w}</span>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {monthWeeks.flat().map((d) => {
-                const inMonth = d.slice(0, 7) === date.slice(0, 7);
-                const isToday = d === today;
-                const dayBookings = bookingsByDate.get(d) ?? [];
-                return (
-                  <Link
-                    key={d}
-                    href={`/dashboard/calendario?view=day&date=${d}`}
+        <Card>
+          {/* Grid fluido a 7 columnas, sin ancho mínimo ni scroll lateral:
+              en pantallas estrechas las celdas simplemente se hacen más
+              pequeñas (día + un contador compacto) en vez de desbordar. */}
+          <div className="grid grid-cols-7 gap-1 pb-2 text-center text-[10px] font-medium uppercase tracking-wide text-ink-400 sm:gap-1.5 sm:text-xs">
+            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((w) => (
+              <span key={w}>
+                <span className="sm:hidden">{w.slice(0, 1)}</span>
+                <span className="hidden sm:inline">{w}</span>
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            {monthWeeks.flat().map((d) => {
+              const inMonth = d.slice(0, 7) === date.slice(0, 7);
+              const isToday = d === today;
+              const dayBookings = bookingsByDate.get(d) ?? [];
+              return (
+                <Link
+                  key={d}
+                  href={`/dashboard/calendario?view=day&date=${d}`}
+                  className={cn(
+                    "flex min-h-[3.25rem] flex-col items-center gap-0.5 rounded-lg border p-1 transition-colors hover:border-ink-300 sm:min-h-[5.5rem] sm:items-stretch sm:gap-1 sm:p-1.5",
+                    inMonth ? "border-ink-100 bg-white" : "border-ink-50 bg-ink-50/50",
+                    isToday && "border-brand-300 bg-brand-50/40",
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex min-h-[5.5rem] flex-col gap-1 rounded-lg border p-1.5 transition-colors hover:border-ink-300",
-                      inMonth ? "border-ink-100 bg-white" : "border-ink-50 bg-ink-50/50",
-                      isToday && "border-brand-300 bg-brand-50/40",
+                      "text-[11px] font-medium sm:text-xs",
+                      inMonth ? (isToday ? "text-brand-700" : "text-ink-700") : "text-ink-300",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        inMonth ? (isToday ? "text-brand-700" : "text-ink-700") : "text-ink-300",
-                      )}
-                    >
-                      {Number(d.slice(8, 10))}
-                    </span>
-                    {dayBookings.length > 0 && (
-                      <span className="inline-flex w-fit items-center rounded-full bg-ink-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    {Number(d.slice(8, 10))}
+                  </span>
+                  {dayBookings.length > 0 && (
+                    <span className="inline-flex w-fit items-center rounded-full bg-ink-900 px-1 py-0.5 text-[9px] font-medium text-white sm:px-1.5 sm:text-[10px]">
+                      <span className="sm:hidden">{dayBookings.length}</span>
+                      <span className="hidden sm:inline">
                         {dayBookings.length} {dayBookings.length === 1 ? "reserva" : "reservas"}
                       </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </Card>
       )}
