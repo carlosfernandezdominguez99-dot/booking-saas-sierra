@@ -96,12 +96,8 @@ export function BookingWizard({
     setSelectedSlot(null);
     startSlotsTransition(async () => {
       const res = await getSlotsAction({ businessId, serviceId, date });
-      if (res.error) {
-        setSlotsError(res.error);
-        setSlots([]);
-      } else {
-        setSlots(res.slots);
-      }
+      if (res.error) setSlotsError(res.error);
+      setSlots(res.slots);
     });
   }
 

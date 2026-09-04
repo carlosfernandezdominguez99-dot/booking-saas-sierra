@@ -13,7 +13,17 @@ export interface GetSlotsActionInput {
   date: string;
 }
 
-export type GetSlotsActionResult = { slots: AvailableSlot[]; error?: undefined } | { slots?: undefined; error: string };
+// Un solo tipo con `slots` SIEMPRE presente (array vacío si hay error) en
+// vez de una unión `{slots} | {error}`: TypeScript no consigue estrechar
+// (narrow) `res.slots` a partir de comprobar `res.error` en el sitio
+// donde se usa (falla el build con "Type 'undefined' is not assignable a
+// SetStateAction<AvailableSlot[]>"), así que se evita depender de esa
+// inferencia — mismo motivo por el que el resto del proyecto usa
+// `data ?? []` en vez de fiarse del estrechado de tipos.
+export interface GetSlotsActionResult {
+  slots: AvailableSlot[];
+  error?: string;
+}
 
 /**
  * Se llama directamente como función desde el cliente (no como `<form
@@ -29,7 +39,7 @@ export async function getSlotsAction(input: GetSlotsActionInput): Promise<GetSlo
     const slots = await getAvailableSlots(supabase, input);
     return { slots };
   } catch {
-    return { error: "No se pudieron cargar los huecos disponibles. Inténtalo de nuevo." };
+    return { slots: [], error: "No se pudieron cargar los huecos disponibles. Inténtalo de nuevo." };
   }
 }
 
