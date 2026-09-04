@@ -230,9 +230,61 @@ de contacto y confirmación) funcionando correctamente. **Fase 5 cerrada.**
 
 ---
 
+## ✅ Fase 6 — PWA + responsive + UX
+
+**Implementado:**
+
+- `src/app/manifest.ts` (nuevo) — convención de Next.js que genera
+  `/manifest.webmanifest` y enlaza automáticamente el `<link rel="manifest">`,
+  sin tocar `layout.tsx`: nombre, colores de marca (`#0c0c0e`),
+  `start_url` directa a `/dashboard/inicio` y `display: "standalone"`.
+- Iconos nuevos en `public/`: `icon-192.png` / `icon-512.png` (uso
+  general, `purpose: "any"`) e `icon-192-maskable.png` /
+  `icon-512-maskable.png` (con margen de seguridad alrededor del logo,
+  `purpose: "maskable"`, para que Android no recorte la "Z" al aplicar
+  formas de icono redondeadas/circulares).
+- `public/sw.js` (nuevo) — service worker mínimo, a propósito **sin
+  ninguna lógica de caché**: solo lo justo para que Chrome/Android
+  considere la app instalable. No cachear nada es intencional — este es
+  un panel de reservas donde la disponibilidad cambia constantemente, y
+  cachear peticiones podría hacer que un negocio viera datos viejos.
+- `src/components/ServiceWorkerRegister.tsx` (nuevo) — registra ese
+  service worker desde el cliente al cargar cualquier página; montado una
+  vez en `RootLayout`.
+- `src/app/layout.tsx` — añadido `appleWebApp` (capable, barra de estado
+  translúcida, título) porque Safari/iOS no lee el manifest para todo
+  esto.
+- Resultado: en Chrome/Android y Safari/iOS, "Añadir a pantalla de
+  inicio" instala ZoriaBooking como una app con su propio icono, sin
+  barra de navegador, arrancando directamente en el panel.
+
+**Auditoría de responsive/UX (móvil, 375px de ancho) sobre la web en
+producción:**
+
+- Landing pública completa, `/login`, `/registro` y la página pública de
+  negocio (`/negocio/[slug]`) revisadas de arriba a abajo en móvil: sin
+  desbordamientos horizontales, botones y formularios a tamaño cómodo
+  para el dedo, textos legibles.
+- Investigada una sospecha de fallo real: en la sección "WhatsApp y
+  recordatorios" de la landing, el simulador de chat (`WhatsAppMock`)
+  parecía dejar un hueco en blanco al bajar rápido con scroll simulado.
+  Confirmado que **no es un fallo**: esa sección usa el mismo componente
+  `Reveal` (aparición con scroll) que el resto de la landing, y al bajar
+  a velocidad normal aparece correctamente, con todas las burbujas del
+  chat una a una. El hueco solo se veía al saltar directamente a esa
+  posición sin scroll intermedio, algo que no ocurre navegando de forma
+  normal.
+- No se ha podido probar el panel (`/dashboard/...`) en el navegador en
+  este entorno porque requiere iniciar sesión con tus credenciales — esa
+  parte se ha revisado por código (mismas clases responsive que el resto
+  del panel, ya usado y verificado por ti en las fases 3-5).
+
+**✅ Fase 6 cerrada.**
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 6 — PWA + responsive + UX
 - [ ] Fase 7 — Preparación WhatsApp
 - [ ] Fase 8 — Suscripciones/Stripe preparado
 - [ ] Fase 9 — Testing + seguridad + revisión final
