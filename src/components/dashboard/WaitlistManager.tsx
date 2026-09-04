@@ -46,7 +46,26 @@ export function WaitlistManager({
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<Record<string, string>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Mientras WhatsApp esté mockeado (no hay cuenta de WhatsApp Business API
+  // conectada todavía), el enlace de la oferta no se envía a ningún sitio
+  // real — solo queda en los logs del servidor. Este botón deja copiarlo a
+  // mano para poder probar/demostrar el flujo de aceptar/rechazar.
+  function handleCopyLink(entry: WaitlistEntryWithDetails) {
+    if (!entry.respondToken) return;
+    const url = `${window.location.origin}/lista-espera/${entry.respondToken}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopiedId(entry.id);
+        setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 2000);
+      })
+      .catch(() => {
+        setRowError((prev) => ({ ...prev, [entry.id]: "No se pudo copiar el enlace." }));
+      });
+  }
 
   function handleAdd() {
     setFormError(null);
@@ -142,8 +161,25 @@ export function WaitlistManager({
                       {entry.serviceName} · quiere el {formatDate(entry.preferredDate)}
                     </p>
                     {entry.status === "offered" && entry.offeredStartTime && (
-                      <p className="mt-1 text-xs font-medium text-amber-700">
-                        Oferta: {formatOfferedSlot(entry.offeredStartTime, timezone)}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium text-amber-700">
+                          Oferta: {formatOfferedSlot(entry.offeredStartTime, timezone)}
+                        </p>
+                        {entry.respondToken && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(entry)}
+                            className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100"
+                          >
+                            {copiedId === entry.id ? "¡Copiado!" : "Copiar enlace"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {entry.status === "offered" && (
+                      <p className="mt-1 text-[11px] text-ink-400">
+                        Mientras no esté conectado el WhatsApp real, este es el único sitio para
+                        conseguir el enlace de la oferta.
                       </p>
                     )}
                     {rowError[entry.id] && <p className="mt-1 text-xs text-red-600">{rowError[entry.id]}</p>}

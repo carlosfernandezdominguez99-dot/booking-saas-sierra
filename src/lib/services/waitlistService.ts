@@ -86,6 +86,7 @@ export async function addToWaitlist(
     serviceName: service?.name ?? "Servicio eliminado",
     offeredStartTime: null,
     offeredEndTime: null,
+    respondToken: null,
     createdAt: entry.created_at,
   };
 }
@@ -99,6 +100,14 @@ export interface WaitlistEntryWithDetails {
   serviceName: string;
   offeredStartTime: string | null;
   offeredEndTime: string | null;
+  /**
+   * Token del enlace público de respuesta (`/lista-espera/[token]`) mientras
+   * la oferta esté activa (`status === "offered"`). Se expone aquí para que
+   * el panel pueda mostrar/copiar el enlace directamente sin depender de
+   * que WhatsApp esté conectado de verdad (ver `sendWaitlistOffer`, que por
+   * ahora solo lo deja en los logs del servidor).
+   */
+  respondToken: string | null;
   createdAt: string;
 }
 
@@ -168,6 +177,7 @@ export async function listWaitlist(
     serviceName: serviceById.get(e.service_id)?.name ?? "Servicio eliminado",
     offeredStartTime: e.offered_start_time,
     offeredEndTime: e.offered_end_time,
+    respondToken: e.respond_token,
     createdAt: e.created_at,
   }));
 }
