@@ -175,9 +175,62 @@ favicon con la Z del logo. **Fase 4 cerrada.**
 
 ---
 
+## ✅ Fase 5 — Página pública de reservas
+
+**Implementado:**
+
+- `src/lib/services/publicBusinessService.ts` (nuevo) — `getPublicBusinessBySlug()`,
+  extraído de `/negocio/[slug]` para compartirlo con la nueva página de
+  reserva sin duplicar la consulta ni sus tipos.
+- `/negocio/[slug]` — cada servicio ahora tiene un botón "Reservar" que
+  lleva directo al asistente con ese servicio preseleccionado, más un
+  enlace "Ver todos los huecos disponibles" al final.
+- `/negocio/[slug]/reservar` (nueva) — el asistente de reserva en sí, sin
+  necesidad de cuenta:
+  1. **Servicio** (se salta este paso si ya viene de `?servicio=` o si el
+     negocio solo tiene uno).
+  2. **Fecha y hora** — tira de días horizontal (próximos 30 días) +
+     huecos disponibles para el día elegido, calculados con el motor de
+     la Fase 3 (`get_available_slots`, respeta jornada partida, buffer,
+     antelación mínima/máxima y días bloqueados).
+  3. **Tus datos** — nombre, teléfono, email opcional y comentario
+     opcional.
+  4. **Confirmación** — pantalla de éxito con los detalles de la cita.
+- `src/components/public/BookingWizard.tsx` (nuevo) — todo el asistente
+  vive en un componente de cliente; cambiar de día vuelve a pedir huecos
+  con una Server Action (`getSlotsAction`), sin recargar la página.
+- `src/app/negocio/[slug]/reservar/actions.ts` (nuevo) — `getSlotsAction`
+  (envuelve `getAvailableSlots`) y `createPublicBookingAction` (envuelve
+  `createPublicBooking`; valida los datos de contacto con Zod y, si tiene
+  éxito, dispara `sendBookingConfirmation` del `whatsappService` mockeado
+  — best-effort, un fallo ahí nunca deshace la reserva ya creada).
+- `src/lib/validations/publicBooking.ts` (nuevo) — validación del
+  formulario de contacto (nombre, teléfono, email/comentario opcionales).
+
+**Seguridad:** todo pasa por el cliente `anon` de Supabase (sin sesión) —
+exactamente como ya estaba pensado desde la Fase 1/3: `get_available_slots`
+y `create_public_booking` son `security definer` con `execute` concedido a
+`anon`, y son las únicas puertas de entrada a datos de reservas desde la
+página pública. Si dos personas reservan el mismo hueco casi a la vez,
+`create_public_booking` revalida el hueco en Postgres antes de crear la
+reserva — quien llega segundo recibe "Ese horario ya no está disponible"
+y el asistente le vuelve a la selección de hora con los huecos ya
+actualizados, en vez de crear un solape.
+
+**Límite conocido (aceptado para el MVP):** la tira de fechas siempre
+muestra 30 días, sin comprobar el `max_notice_days` real configurado en
+"Configuración de reservas" — si un negocio permite reservar con menos
+antelación, esos días de más simplemente no muestran huecos (el motor los
+descarta igualmente), no es un fallo, solo una franja que no hace falta
+mostrar.
+
+**⚠️ Pendiente de confirmar por Carlos:** build de Vercel limpio, y una
+reserva real de principio a fin contra `/negocio/tu-slug`.
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 5 — Página pública de reservas
 - [ ] Fase 6 — PWA + responsive + UX
 - [ ] Fase 7 — Preparación WhatsApp
 - [ ] Fase 8 — Suscripciones/Stripe preparado

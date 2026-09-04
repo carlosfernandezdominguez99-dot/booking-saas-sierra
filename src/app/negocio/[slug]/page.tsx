@@ -1,58 +1,21 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/types/database.types";
+import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
 interface PageProps {
   params: { slug: string };
 }
 
-// Forma explícita del negocio para esta página pública (solo las columnas
-// que se seleccionan). Ver el comentario detallado en
-// `src/lib/services/authContext.ts`: con nuestros tipos de Supabase
-// escritos a mano, el tipo que infiere automáticamente `.select(...)`
-// sobre `businesses` colapsaba a `never` en el build de Vercel al
-// reutilizar la variable en una consulta posterior dentro de la misma
-// función; forzar el tipo aquí evita depender de esa inferencia rota.
-type PublicBusiness = Pick<
-  Database["public"]["Tables"]["businesses"]["Row"],
-  "id" | "name" | "description" | "logo_url" | "city" | "business_type"
->;
-
-type PublicService = Pick<
-  Database["public"]["Tables"]["services"]["Row"],
-  "id" | "name" | "description" | "price_cents" | "duration_minutes"
->;
-
-async function getBusiness(slug: string) {
-  const supabase = await createClient();
-
-  const { data: business } = (await supabase
-    .from("businesses")
-    .select("id, name, description, logo_url, city, business_type")
-    .eq("slug", slug)
-    .maybeSingle()) as unknown as { data: PublicBusiness | null };
-
-  if (!business) return null;
-
-  const { data: services } = (await supabase
-    .from("services")
-    .select("id, name, description, price_cents, duration_minutes")
-    .eq("business_id", business.id)
-    .eq("active", true)
-    .order("position", { ascending: true })) as unknown as { data: PublicService[] | null };
-
-  return { business, services: services ?? [] };
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const result = await getBusiness(params.slug);
+  const result = await getPublicBusinessBySlug(params.slug);
   return { title: result?.business.name ?? "Negocio no encontrado" };
 }
 
 export default async function PublicBusinessPage({ params }: PageProps) {
-  const result = await getBusiness(params.slug);
+  const result = await getPublicBusinessBySlug(params.slug);
 
   if (!result) notFound();
   const { business, services } = result;
@@ -96,17 +59,29 @@ export default async function PublicBusinessPage({ params }: PageProps) {
                   <p className="font-medium text-ink-900">{service.name}</p>
                   <p className="text-sm text-ink-500">{service.duration_minutes} min</p>
                 </div>
-                <p className="shrink-0 font-semibold text-ink-900">
-                  {(service.price_cents / 100).toFixed(2)} €
-                </p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="font-semibold text-ink-900">{(service.price_cents / 100).toFixed(2)} €</p>
+                  <Link href={`/negocio/${params.slug}/reservar?servicio=${service.id}`}>
+                    <Button type="button" size="sm">
+                      Reservar
+                    </Button>
+                  </Link>
+                </div>
               </Card>
             ))}
           </div>
         )}
 
-        <p className="mt-8 text-center text-xs text-ink-400">
-          La reserva online desde esta página se activa en la Fase 5.
-        </p>
+        {services.length > 0 && (
+          <p className="mt-8 text-center">
+            <Link
+              href={`/negocio/${params.slug}/reservar`}
+              className="text-sm font-medium text-brand-600 hover:underline"
+            >
+              Ver todos los huecos disponibles →
+            </Link>
+          </p>
+        )}
       </div>
     </main>
   );
