@@ -46,6 +46,16 @@ export interface CancellationPayload {
   reason?: string;
 }
 
+export interface WaitlistOfferPayload {
+  toPhone: string;
+  customerName: string;
+  businessName: string;
+  serviceName: string;
+  startTimeIso: string;
+  /** Enlace público de un solo uso para aceptar/rechazar (Fase 7). */
+  respondUrl: string;
+}
+
 const isConfigured = () =>
   Boolean(process.env.WHATSAPP_API_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
 
@@ -89,5 +99,20 @@ export async function sendCancellationMessage(
     `Hola ${payload.customerName}, tu reserva en ${payload.businessName} (${payload.serviceName}, ` +
     `${payload.startTimeIso}) ha sido cancelada.` +
     (payload.reason ? ` Motivo: ${payload.reason}` : "");
+  return sendWhatsappMessage(payload.toPhone, message);
+}
+
+/**
+ * Aviso de lista de espera (Fase 7): se ha liberado un hueco que encaja
+ * con lo que esta persona pidió. Sin la integración real, el "Sí/No" de
+ * WhatsApp se simula con un enlace de un solo uso a una página pública —
+ * en cuanto haya credenciales reales, esto pasará a ser un mensaje
+ * interactivo de botones y el enlace ya no hará falta.
+ */
+export async function sendWaitlistOffer(payload: WaitlistOfferPayload): Promise<WhatsappResult> {
+  const message =
+    `Hola ${payload.customerName}, se ha liberado un hueco en ${payload.businessName} ` +
+    `para ${payload.serviceName} el ${payload.startTimeIso}. ¿Lo quieres?\n` +
+    `Responde aquí: ${payload.respondUrl}`;
   return sendWhatsappMessage(payload.toPhone, message);
 }

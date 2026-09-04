@@ -36,6 +36,7 @@ export type SubscriptionStatus = "trial" | "active" | "past_due" | "cancelled";
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show";
 export type NotificationChannel = "whatsapp" | "email" | "push";
 export type NotificationStatus = "pending" | "sent" | "failed";
+export type WaitlistStatus = "waiting" | "offered" | "accepted" | "rejected" | "expired";
 export type BusinessMemberRole = "owner" | "staff";
 
 export interface Database {
@@ -422,6 +423,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      waitlist_entries: {
+        Row: {
+          id: string;
+          business_id: string;
+          customer_id: string;
+          service_id: string;
+          preferred_date: string;
+          status: WaitlistStatus;
+          offered_start_time: string | null;
+          offered_end_time: string | null;
+          offered_at: string | null;
+          respond_token: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          customer_id: string;
+          service_id: string;
+          preferred_date: string;
+          status?: WaitlistStatus;
+          offered_start_time?: string | null;
+          offered_end_time?: string | null;
+          offered_at?: string | null;
+          respond_token?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          customer_id?: string;
+          service_id?: string;
+          preferred_date?: string;
+          status?: WaitlistStatus;
+          offered_start_time?: string | null;
+          offered_end_time?: string | null;
+          offered_at?: string | null;
+          respond_token?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -453,6 +499,36 @@ export interface Database {
           start_time: string;
           end_time: string;
           status: string;
+        }[];
+      };
+      offer_next_waitlist_candidate: {
+        Args: { p_booking_id: string };
+        Returns: {
+          entry_id: string;
+          customer_name: string;
+          customer_phone: string;
+          service_name: string;
+          offered_start_time: string;
+          offered_end_time: string;
+          respond_token: string;
+        }[];
+      };
+      respond_to_waitlist_offer: {
+        Args: { p_token: string; p_accept: boolean };
+        Returns: {
+          result: "accepted" | "rejected" | "expired" | "not_found";
+          booking_id: string | null;
+          business_name: string | null;
+          service_name: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          next_entry_id: string | null;
+          next_customer_name: string | null;
+          next_customer_phone: string | null;
+          next_service_name: string | null;
+          next_offered_start_time: string | null;
+          next_offered_end_time: string | null;
+          next_respond_token: string | null;
         }[];
       };
     };

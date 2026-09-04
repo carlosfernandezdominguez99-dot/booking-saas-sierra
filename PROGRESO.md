@@ -283,9 +283,79 @@ producción:**
 
 ---
 
+## ✅ Fase 7 — Lista de espera y reoferta automática al cancelar
+
+Todavía **no hay conexión real con WhatsApp** (hace falta que crees una
+cuenta de WhatsApp Business Platform — Meta Cloud API o un proveedor como
+Twilio — y me pases las credenciales; `whatsappService.ts` ya está
+preparado para enchufarlas sin tocar el resto de la app). Mientras tanto,
+todo el motor de negocio de la lista de espera ya funciona de verdad, y el
+"Sí/No" de WhatsApp se simula con un enlace público de un solo uso.
+
+**Implementado:**
+
+- `supabase/migrations/0006_waitlist.sql` (nueva, **hay que ejecutarla en
+  el SQL Editor** antes de usar esto) — tabla `waitlist_entries` (cada
+  entrada es cliente + servicio + día que quiere, nunca solo el cliente,
+  porque el hueco liberado tiene que encajar en duración con su servicio)
+  y tres funciones:
+  - `offer_waitlist_slot(...)` — interna: busca a la primera persona en
+    espera ese día cuyo servicio quepa en un hueco dado, por orden de
+    llegada (`created_at`), y le marca la oferta.
+  - `offer_next_waitlist_candidate(p_booking_id)` — se llama justo tras
+    cancelar una cita desde el panel.
+  - `respond_to_waitlist_offer(p_token, p_accept)` — la puerta pública
+    (`anon`): si acepta, revalida que el hueco sigue libre y crea la cita
+    en el momento; si rechaza, ofrece automáticamente el mismo hueco a la
+    siguiente persona que encaje (así se implementa el "salta a quien no
+    encaje, sigue el orden de la lista" que pediste).
+- `src/lib/services/waitlistService.ts` (nuevo) — `addToWaitlist()` (alta
+  manual desde el panel, con su propio upsert de cliente por teléfono, ya
+  que aún no hay alta manual de clientes en general), `listWaitlist()`,
+  `deleteWaitlistEntry()`, `offerNextWaitlistCandidate()` y
+  `respondToWaitlistOffer()`.
+- `/dashboard/lista-espera` (nueva, enlazada desde el menú) — ver quién
+  espera, su estado (Esperando / Oferta enviada / Aceptó / Rechazó /
+  Caducó) y añadir a alguien a mano (por ejemplo, tras una llamada).
+- `cancelBookingAction` (`/dashboard/reservas/actions.ts`) ahora, tras
+  cancelar, busca a quien encaje en la lista de espera de ese día y le
+  "avisa" (mock) — best-effort: si el aviso fallara, la cancelación ya
+  hecha no se deshace.
+- `/lista-espera/[token]` (nueva, pública, sin sesión) — la página que
+  llevaría el enlace del mensaje de WhatsApp, con dos botones ("Sí, la
+  quiero" / "No, gracias"). Al rechazar, encadena automáticamente la
+  oferta a la siguiente persona en espera, exactamente igual que si lo
+  hiciera la función de Postgres desde el panel.
+- `whatsappService.ts` — nueva función `sendWaitlistOffer()`, mockeada
+  igual que las demás (log en consola, `sent: false`), lista para
+  sustituirse por la llamada real a la Graph API en cuanto tengas cuenta.
+
+**Límite conocido (aceptado para el MVP):** la lista de espera no distingue
+empleado — se apunta al negocio en general, no a una persona concreta, y la
+cita que se crea al aceptar no lleva empleado asignado. Para negocios de un
+único profesional esto no cambia nada; para negocios con varios empleados,
+de momento no reserva con el mismo empleado que tenía la cita cancelada.
+
+**Seguridad:** `respond_to_waitlist_offer` es la única puerta que tiene
+`anon`, y solo puede tocar la fila que coincide con el `respond_token`
+(un UUID aleatorio de un solo uso) — nunca puede listar ni adivinar otras
+entradas de la lista de espera. Antes de crear la cita revalida que el
+hueco sigue libre, por si acaso.
+
+**Pendiente para más adelante (no bloquea seguir con la Fase 8):**
+
+- Conectar WhatsApp de verdad (necesita que tú crees la cuenta —
+  avísame cuando la tengas y lo enchufo).
+- "Modificar cita por WhatsApp" (la otra mitad de las notas de producto
+  de más abajo): de momento solo está resuelta la cancelación → lista de
+  espera; reprogramar una cita ya existente por WhatsApp queda para
+  cuando haya integración real, ya que sin botones de WhatsApp de verdad
+  no tiene mucho sentido simular esa conversación completa.
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 7 — Preparación WhatsApp
 - [ ] Fase 8 — Suscripciones/Stripe preparado
 - [ ] Fase 9 — Testing + seguridad + revisión final
 

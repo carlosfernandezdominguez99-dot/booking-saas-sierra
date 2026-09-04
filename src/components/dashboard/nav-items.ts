@@ -1,7 +1,18 @@
 export interface DashboardNavItem {
   href: string;
   label: string;
-  icon: "home" | "calendar" | "list" | "users" | "scissors" | "clock" | "user-group" | "settings" | "chart" | "more";
+  icon:
+    | "home"
+    | "calendar"
+    | "list"
+    | "users"
+    | "scissors"
+    | "clock"
+    | "user-group"
+    | "settings"
+    | "chart"
+    | "more"
+    | "waitlist";
 }
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
@@ -13,5 +24,6 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { href: "/dashboard/horarios", label: "Horarios", icon: "clock" },
   { href: "/dashboard/empleados", label: "Empleados", icon: "user-group" },
   { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart" },
+  { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist" },
   { href: "/dashboard/configuracion", label: "Configuración", icon: "settings" },
 ];

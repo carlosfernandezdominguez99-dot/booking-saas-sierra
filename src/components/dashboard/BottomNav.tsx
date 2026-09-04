@@ -18,6 +18,7 @@ const PRIMARY_ITEMS = [
 
 const MORE_ITEMS = [
   { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart" as const },
+  { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist" as const },
   { href: "/dashboard/servicios", label: "Servicios", icon: "scissors" as const },
   { href: "/dashboard/horarios", label: "Horarios", icon: "clock" as const },
   { href: "/dashboard/empleados", label: "Empleados", icon: "user-group" as const },

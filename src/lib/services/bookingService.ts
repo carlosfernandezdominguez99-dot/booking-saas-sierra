@@ -130,10 +130,12 @@ export async function listBookings(client: TypedClient, params: ListBookingsPara
 }
 
 /**
- * Cancela una reserva desde el panel (el negocio cancela manualmente). El
- * flujo de cancelación por WhatsApp con lista de espera es la Fase 7 y
- * vivirá en su propio servicio. RLS garantiza que solo se puede cancelar
- * una reserva del propio negocio.
+ * Cancela una reserva desde el panel (el negocio cancela manualmente).
+ * Solo marca el estado — es `cancelBookingAction` quien, después, llama a
+ * `waitlistService.offerNextWaitlistCandidate` para reofertar el hueco
+ * liberado a la lista de espera (Fase 7); se mantiene separado de aquí
+ * para que esta función siga haciendo una sola cosa. RLS garantiza que
+ * solo se puede cancelar una reserva del propio negocio.
  */
 export async function cancelBooking(client: TypedClient, bookingId: string): Promise<void> {
   const { error } = await (client.from("bookings") as any).update({ status: "cancelled" }).eq("id", bookingId);
