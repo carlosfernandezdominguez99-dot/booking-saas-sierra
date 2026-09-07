@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
-import { joinWaitlistPublic } from "@/lib/services/customerPortalService";
+import { joinWaitlistPublic } from "@/lib/services/waitlistService";
 import { sendWaitlistJoinConfirmationEmail } from "@/lib/email/emailService";
 import { publicBookingContactSchema } from "@/lib/validations/publicBooking";
 
@@ -21,12 +21,12 @@ export interface JoinWaitlistPublicActionResult {
 }
 
 /**
- * Página pública "Apuntarme a la lista de espera" para quien todavía no
- * tiene sesión de portal (primera vez, o no le ha llegado o no ha usado el
- * enlace de acceso) — usa `join_waitlist_public`, que además da de alta al
- * cliente si hace falta (mismo patrón que `create_public_booking`) y
- * genera ya un token de acceso para que el email de confirmación sirva
- * también como enlace de entrada al portal.
+ * Página pública "Apuntarme a la lista de espera" para quien no quiere (o
+ * no tiene todavía) una cuenta en `/mis-citas` — usa `join_waitlist_public`,
+ * que da de alta al cliente si hace falta (mismo patrón que
+ * `create_public_booking`). Si más adelante se registra una cuenta con el
+ * mismo email, esta entrada aparecerá igual en su panel: la agregación es
+ * por email, no depende de cómo se creó.
  */
 export async function joinWaitlistPublicAction(
   slug: string,
@@ -68,9 +68,9 @@ export async function joinWaitlistPublicAction(
 
     if (res.error) return { error: res.error };
 
-    if (res.customerEmail && res.accessToken) {
+    if (res.customerEmail) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-      const portalLink = `${siteUrl}/negocio/${slug}/mis-citas/verificar?token=${res.accessToken}`;
+      const accountLink = `${siteUrl}/mis-citas`;
       const service = result.services.find((s) => s.id === input.serviceId);
       const preferredDateLabel = new Date(`${input.preferredDate}T00:00:00Z`).toLocaleDateString("es-ES", {
         timeZone: "UTC",
@@ -85,7 +85,7 @@ export async function joinWaitlistPublicAction(
           businessName: result.business.name,
           serviceName: service?.name ?? "",
           preferredDateLabel,
-          portalLink,
+          accountLink,
         });
       } catch {
         // No-op: best-effort — el registro en la lista de espera ya se guardó bien.

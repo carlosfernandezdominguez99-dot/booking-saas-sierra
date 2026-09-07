@@ -61,14 +61,6 @@ export interface WaitlistOfferEmailPayload {
   respondUrl: string;
 }
 
-export interface CustomerAccessEmailPayload {
-  toEmail: string;
-  customerName: string;
-  businessName: string;
-  /** Enlace de acceso al portal del cliente (válido 30 días). */
-  magicLink: string;
-}
-
 export interface WaitlistJoinConfirmationEmailPayload {
   toEmail: string;
   customerName: string;
@@ -76,8 +68,8 @@ export interface WaitlistJoinConfirmationEmailPayload {
   serviceName: string;
   /** Fecha (YYYY-MM-DD) que pidió, ya formateada para mostrar. */
   preferredDateLabel: string;
-  /** Enlace al portal del cliente, para poder consultar/darse de baja luego. */
-  portalLink: string;
+  /** Enlace a "Mis citas" (cuenta de cliente) para poder consultar/darse de baja luego. */
+  accountLink: string;
 }
 
 const isConfigured = () => Boolean(process.env.RESEND_API_KEY);
@@ -179,17 +171,6 @@ export async function sendWaitlistOfferEmail(payload: WaitlistOfferEmailPayload)
   return sendEmail(payload.toEmail, `Hay un hueco libre en ${payload.businessName}`, html);
 }
 
-export async function sendCustomerAccessEmail(payload: CustomerAccessEmailPayload): Promise<EmailResult> {
-  const html = wrapEmail(
-    "Tu enlace de acceso",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Aquí tienes tu enlace para ver tus citas en <strong>${payload.businessName}</strong>:</p>
-     <p><a href="${payload.magicLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mis citas</a></p>
-     <p style="font-size:12px;color:#888;">Este enlace es personal — no hace falta contraseña, y sigue funcionando durante 30 días.</p>`,
-  );
-  return sendEmail(payload.toEmail, `Tu enlace de acceso a ${payload.businessName}`, html);
-}
-
 export async function sendWaitlistJoinConfirmationEmail(
   payload: WaitlistJoinConfirmationEmailPayload,
 ): Promise<EmailResult> {
@@ -199,8 +180,8 @@ export async function sendWaitlistJoinConfirmationEmail(
      <p>Te hemos apuntado a la lista de espera de <strong>${payload.businessName}</strong>:</p>
      <p><strong>${payload.serviceName}</strong><br/>Para el ${payload.preferredDateLabel}</p>
      <p>Si se libera un hueco que encaje, te avisaremos por aquí con un enlace para confirmarlo.</p>
-     <p><a href="${payload.portalLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mi lista de espera</a></p>
-     <p style="font-size:12px;color:#888;">Desde ese enlace también puedes darte de baja si ya no te interesa.</p>`,
+     <p><a href="${payload.accountLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mi lista de espera</a></p>
+     <p style="font-size:12px;color:#888;">Crea una cuenta gratis con este mismo email en "Mis citas" para ver ahí todas tus reservas (también las de otros negocios) y poder darte de baja cuando quieras.</p>`,
   );
   return sendEmail(payload.toEmail, `Apuntado a la lista de espera de ${payload.businessName}`, html);
 }

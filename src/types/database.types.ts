@@ -84,6 +84,8 @@ export interface Database {
           timezone: string;
           subscription_status: SubscriptionStatus;
           trial_ends_at: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
           onboarding_completed_at: string | null;
           created_at: string;
           updated_at: string;
@@ -102,6 +104,8 @@ export interface Database {
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
           onboarding_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -120,6 +124,8 @@ export interface Database {
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
           onboarding_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -468,27 +474,51 @@ export interface Database {
         };
         Relationships: [];
       };
-      customer_access_tokens: {
+      customer_accounts: {
         Row: {
           id: string;
-          customer_id: string;
-          business_id: string;
+          email: string;
+          password_hash: string;
+          name: string;
+          phone: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          password_hash: string;
+          name: string;
+          phone: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          password_hash?: string;
+          name?: string;
+          phone?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      customer_sessions: {
+        Row: {
+          id: string;
+          account_id: string;
           token: string;
           expires_at: string;
           created_at: string;
         };
         Insert: {
           id?: string;
-          customer_id: string;
-          business_id: string;
+          account_id: string;
           token?: string;
           expires_at?: string;
           created_at?: string;
         };
         Update: {
           id?: string;
-          customer_id?: string;
-          business_id?: string;
+          account_id?: string;
           token?: string;
           expires_at?: string;
           created_at?: string;
@@ -563,36 +593,6 @@ export interface Database {
           next_respond_token: string | null;
         }[];
       };
-      request_customer_access: {
-        Args: { p_business_id: string; p_contact: string };
-        Returns: {
-          customer_id: string;
-          customer_name: string;
-          customer_email: string;
-          token: string;
-        }[];
-      };
-      get_customer_portal_data: {
-        Args: { p_token: string };
-        Returns: {
-          valid: boolean;
-          business_name: string | null;
-          business_slug: string | null;
-          business_timezone: string | null;
-          customer_name: string | null;
-          upcoming_bookings: unknown;
-          past_bookings: unknown;
-          waitlist_entries: unknown;
-        }[];
-      };
-      join_waitlist_self: {
-        Args: { p_token: string; p_service_id: string; p_preferred_date: string };
-        Returns: { entry_id: string | null; error: string | null }[];
-      };
-      leave_waitlist_self: {
-        Args: { p_token: string; p_entry_id: string };
-        Returns: boolean;
-      };
       join_waitlist_public: {
         Args: {
           p_business_id: string;
@@ -605,9 +605,33 @@ export interface Database {
         Returns: {
           entry_id: string | null;
           customer_email: string | null;
-          access_token: string | null;
           error: string | null;
         }[];
+      };
+      customer_signup: {
+        Args: { p_email: string; p_password: string; p_name: string; p_phone: string };
+        Returns: { session_token: string | null; error: string | null }[];
+      };
+      customer_login: {
+        Args: { p_email: string; p_password: string };
+        Returns: { session_token: string | null; error: string | null }[];
+      };
+      customer_logout: {
+        Args: { p_token: string };
+        Returns: undefined;
+      };
+      get_customer_account_data: {
+        Args: { p_token: string };
+        Returns: {
+          valid: boolean;
+          account_name: string | null;
+          account_email: string | null;
+          businesses: unknown;
+        }[];
+      };
+      leave_waitlist_by_account: {
+        Args: { p_token: string; p_entry_id: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

@@ -347,3 +347,51 @@ export async function respondToWaitlistOffer(
 
   return out;
 }
+
+export interface JoinWaitlistPublicParams {
+  businessId: string;
+  serviceId: string;
+  preferredDate: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+}
+
+export interface JoinWaitlistPublicResult {
+  entryId?: string;
+  customerEmail?: string;
+  error?: string;
+}
+
+/**
+ * Para alguien que quiere apuntarse a la lista de espera SIN crear una
+ * cuenta (sigue sin ser obligatorio tener cuenta ni haber reservado antes
+ * — ver `join_waitlist_public` en `0012_customer_accounts.sql`). Si más
+ * adelante ese email se registra en `/mis-citas`, esta entrada aparecerá
+ * igual en su panel — la agregación es por email, no por cómo se creó.
+ */
+export async function joinWaitlistPublic(
+  client: TypedClient,
+  params: JoinWaitlistPublicParams,
+): Promise<JoinWaitlistPublicResult> {
+  const { data, error } = (await (client.rpc as any)("join_waitlist_public", {
+    p_business_id: params.businessId,
+    p_service_id: params.serviceId,
+    p_preferred_date: params.preferredDate,
+    p_customer_name: params.customerName,
+    p_customer_phone: params.customerPhone,
+    p_customer_email: params.customerEmail,
+  })) as unknown as {
+    data: { entry_id: string | null; customer_email: string | null; error: string | null }[] | null;
+    error: { message: string } | null;
+  };
+  if (error) throw error;
+
+  const row = data?.[0];
+  if (!row) return { error: "No se pudo apuntar a la lista de espera." };
+  if (row.error) return { error: row.error };
+  return {
+    entryId: row.entry_id ?? undefined,
+    customerEmail: row.customer_email ?? undefined,
+  };
+}

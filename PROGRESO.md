@@ -448,25 +448,126 @@ este orden:** `0009_respond_offer_timezone.sql` y
 seguirán funcionando, pero el arreglo de la hora en el email y el portal
 del cliente darán error hasta que se ejecuten.
 
-**⚠️ Pendiente de tu lado — archivos de Stripe a borrar a mano:** no he
-podido borrar archivos directamente en tu ordenador en esta sesión (el
-entorno de comandos del dispositivo ha fallado al arrancar). Como pediste
-aparcar Stripe, borra estos 4 archivos manualmente (ya no los usa nada,
-son justo lo que había empezado a implementar de la Fase 8):
+**⚠️ Pendiente de tu lado — 1 archivo viejo de Stripe a borrar a mano:**
+`supabase/migrations/0008_stripe.sql` quedó obsoleto (la Fase 8, más abajo,
+lo sustituye por `0011_stripe.sql` con los mismos datos pero repensado
+desde cero) — bórralo, no lo ejecutes. **`src/lib/stripe/stripeService.ts`,
+`src/app/api/stripe/webhook/route.ts` y `src/components/dashboard/SubscriptionCard.tsx`
+NO se borran** — son nuevos, forman parte de la Fase 8 ya implementada,
+no los restos que se pidió aparcar antes.
 
-- `supabase/migrations/0008_stripe.sql`
-- `src/lib/stripe/stripeService.ts`
-- `src/app/api/stripe/webhook/route.ts`
-- `src/components/dashboard/SubscriptionCard.tsx`
+---
+
+## ✅ Fase 7.3 — Cuenta de cliente de verdad (sustituye al enlace mágico)
+
+Dijiste que el enlace por email de la Fase 7.2 era un rollo, y que
+preferías un login normal (email + contraseña) donde, si reservas en dos
+negocios distintos que usen la app, veas las citas de ambos en la misma
+cuenta. Se ha sustituido el portal de la Fase 7.2 entero por esto —
+**ejecuta `0012_customer_accounts.sql`, no `0010_customer_portal.sql`** si
+todavía no habías ejecutado esta última (si ya la habías ejecutado, no
+pasa nada: `0012` deshace esas tablas/funciones ella sola).
+
+- `/mis-citas` (nueva, sustituye a `/negocio/[slug]/mis-citas`) — ya NO
+  depende de un negocio concreto: es una cuenta global con email y
+  contraseña de verdad. Al crearla o iniciar sesión, el panel agrega
+  automáticamente las citas de **todos** los negocios donde haya un
+  cliente con ese mismo email — sin ningún paso de "vincular cuentas": si
+  ya reservaste antes con ese email en cualquier negocio (o reservas
+  después, con o sin sesión iniciada), aparece solo. Contraseñas guardadas
+  con hash (`pgcrypto`, `bcrypt`), nunca en texto plano.
+- Pestañas Inicio (próxima cita + lista de espera activa, de cualquier
+  negocio) / Próximas / Pasadas — cada fila indica de qué negocio es.
+  Se puede quitar de una lista de espera con un clic; para apuntarse a
+  una nueva, se sigue haciendo desde la página del negocio en cuestión
+  (`/negocio/[slug]/lista-espera`), y aparecerá sola en el panel al
+  siguiente inicio de sesión.
+- `supabase/migrations/0012_customer_accounts.sql` (nueva, **hay que
+  ejecutarla en el SQL Editor**) — elimina `customer_access_tokens` y las
+  funciones del enlace mágico (`request_customer_access`,
+  `get_customer_portal_data`, `join_waitlist_self`, `leave_waitlist_self`)
+  y las sustituye por `customer_accounts` / `customer_sessions` y las
+  funciones `customer_signup`, `customer_login`, `customer_logout`,
+  `get_customer_account_data` y `leave_waitlist_by_account`. También
+  actualiza `join_waitlist_public` (quita el token que ya no hace falta).
+- El enlace "¿Ya reservaste antes? Ver mis citas" de la página de cada
+  negocio ahora lleva a `/mis-citas` (antes iba a una ruta por negocio).
+- El email de "apuntado a la lista de espera" ahora invita a crear una
+  cuenta en `/mis-citas` con el mismo email, en vez de mandar un enlace de
+  acceso de un solo negocio.
+
+**⚠️ Archivos que ya no existen y hay que borrar de tu carpeta** (los
+sustituye todo lo de arriba):
+
+- `src/app/negocio/[slug]/mis-citas/` (carpeta entera: `page.tsx`,
+  `actions.ts` y `verificar/route.ts`)
+- `src/components/public/RequestAccessForm.tsx`
+- `src/components/public/CustomerPortal.tsx`
+- `src/lib/services/customerSession.ts`
+- `src/lib/services/customerPortalService.ts`
+
+---
+
+## ✅ Fase 8 — Suscripciones (Stripe)
+
+Retomada ahora que el portal del cliente y el arreglo de emails ya están
+verificados. Como con WhatsApp/email, se usa la API HTTP de Stripe
+directamente (sin SDK) — la única diferencia es que aquí no tiene sentido
+"mockear" un cobro: mientras no configures las variables de entorno, el
+botón de pago simplemente avisa de que Stripe no está configurado, en vez
+de simular nada.
+
+**Implementado:**
+
+- `supabase/migrations/0011_stripe.sql` (nueva, **hay que ejecutarla en el
+  SQL Editor**) — añade `stripe_customer_id` y `stripe_subscription_id` a
+  `businesses`.
+- `src/lib/stripe/stripeService.ts` (nuevo) — `createCheckoutSession()`
+  (Checkout Session en modo suscripción para el plan de 5 €/mes, reutiliza
+  el cliente de Stripe si el negocio ya tenía uno), `createBillingPortalSession()`
+  (portal de facturación: cambiar tarjeta, ver facturas, cancelar) y
+  `verifyStripeSignature()` (verificación manual de la firma del webhook
+  con `crypto`, sin SDK — HMAC-SHA256 sobre `timestamp.cuerpo`, comparación
+  con `timingSafeEqual` y rechazo de eventos con más de 5 minutos).
+- `src/app/api/stripe/webhook/route.ts` (nuevo) — recibe
+  `checkout.session.completed` (activa la suscripción y guarda los IDs de
+  Stripe), `customer.subscription.updated`/`.created` (sincroniza el
+  estado: activa/en prueba → `active`, impago → `past_due`, cualquier otro
+  → `cancelled`) y `customer.subscription.deleted` (→ `cancelled`). Usa el
+  cliente `admin` (service role) porque esta petición no lleva sesión de
+  ningún usuario, solo la firma de Stripe.
+- `/dashboard/configuracion` — la tarjeta "Suscripción"
+  (`SubscriptionCard.tsx`, nuevo) ahora es real: muestra el estado actual,
+  y un botón que lleva a pagar (si no está activa) o a gestionar la
+  suscripción en el portal de Stripe (si ya está activa).
+- `startCheckoutAction` / `openBillingPortalAction`
+  (`dashboard/configuracion/actions.ts`) — envuelven las dos funciones de
+  arriba con el negocio de la sesión actual.
+
+**⚠️ Pendiente de tu lado para activarlo de verdad:**
+
+1. En el Dashboard de Stripe (modo prueba primero, para probar sin cobrar
+   de verdad): crea un producto con un precio recurrente de 5 €/mes y
+   copia su ID (`price_...`).
+2. Copia tu clave secreta (`sk_test_...` en modo prueba).
+3. Crea un endpoint de webhook apuntando a
+   `https://tu-dominio-de-vercel/api/stripe/webhook`, suscrito a
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.created` y `customer.subscription.deleted`, y
+   copia su "signing secret" (`whsec_...`).
+4. Añade en Vercel: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` y
+   `STRIPE_WEBHOOK_SECRET` (ver `.env.example`).
+5. Ejecuta `0011_stripe.sql` en el SQL Editor de Supabase.
+
+Sin esto, el botón "Pasar a plan de pago" da un error claro ("Stripe no
+está configurado todavía...") en vez de fallar en silencio. Cuando quieras
+probar con dinero real hace falta repetir 1-3 en modo real (`sk_live_...`)
+y cambiar las variables de entorno.
 
 ---
 
 ## ⏳ Próximas fases
 
-- [ ] Fase 8 — Suscripciones/Stripe (aparcada de momento a petición tuya —
-  llegué a implementarla completa y mockeada, pero la quitamos para
-  centrarnos antes en el portal del cliente y otros ajustes; se retoma
-  más adelante)
 - [ ] Fase 9 — Testing + seguridad + revisión final
 
 ---

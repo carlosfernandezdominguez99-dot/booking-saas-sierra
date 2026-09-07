@@ -6,15 +6,9 @@ import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
 import { LogoUploader } from "@/components/dashboard/LogoUploader";
 import { BusinessProfileForm } from "@/components/dashboard/BusinessProfileForm";
 import { BookingSettingsForm } from "@/components/dashboard/BookingSettingsForm";
+import { SubscriptionCard } from "@/components/dashboard/SubscriptionCard";
 import { Button } from "@/components/ui/Button";
 import type { BookingSettingsInput } from "@/lib/validations/business";
-
-const STATUS_LABEL: Record<string, string> = {
-  trial: "Prueba gratuita",
-  active: "Activa",
-  past_due: "Pago pendiente",
-  cancelled: "Cancelada",
-};
 
 const DEFAULT_SETTINGS: BookingSettingsInput = {
   minNoticeMinutes: 60,
@@ -24,7 +18,11 @@ const DEFAULT_SETTINGS: BookingSettingsInput = {
   minCancellationHours: 24,
 };
 
-export default async function ConfiguracionPage() {
+interface ConfiguracionPageProps {
+  searchParams: { checkout?: string };
+}
+
+export default async function ConfiguracionPage({ searchParams }: ConfiguracionPageProps) {
   const { supabase, business } = await requireBusinessContext();
   const settingsRow = await getBookingSettings(supabase, business.id);
 
@@ -71,12 +69,13 @@ export default async function ConfiguracionPage() {
 
       <Card>
         <CardTitle>Suscripción</CardTitle>
-        <CardDescription className="mb-4">
-          Plan único de 5 €/mes. La integración de pago (Stripe) se hará más adelante.
-        </CardDescription>
-        <span className="inline-flex items-center rounded-full bg-ink-100 px-3 py-1 text-sm font-medium text-ink-700">
-          {STATUS_LABEL[business.subscription_status] ?? business.subscription_status}
-        </span>
+        <CardDescription className="mb-4">Plan único de 5 €/mes.</CardDescription>
+        <SubscriptionCard
+          status={business.subscription_status}
+          trialEndsAt={business.trial_ends_at}
+          hasStripeCustomer={Boolean(business.stripe_customer_id)}
+          checkoutParam={searchParams.checkout}
+        />
       </Card>
 
       <Card>
