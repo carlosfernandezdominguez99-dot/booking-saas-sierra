@@ -100,6 +100,16 @@ export async function createPublicBookingAction(
       comment: parsed.data.comment || null,
     });
 
+    // Hace falta la zona horaria del negocio para mostrar la hora
+    // correcta en el email de confirmación (nunca en UTC) — se busca
+    // aparte porque `create_public_booking` no la devuelve. Lectura
+    // pública normal (RLS ya deja leer negocios activos a `anon`).
+    const { data: businessRow } = await (supabase.from("businesses") as any)
+      .select("timezone")
+      .eq("id", input.businessId)
+      .maybeSingle();
+    const timezone = (businessRow?.timezone as string | undefined) ?? "Europe/Madrid";
+
     // "Envío" de confirmación por WhatsApp — sigue siendo un mock que solo
     // deja un log (no hay cuenta de WhatsApp Business API conectada
     // todavía). Es un intento aparte, a propósito: si fallara, la reserva
@@ -126,6 +136,7 @@ export async function createPublicBookingAction(
         businessName: result.businessName,
         serviceName: result.serviceName,
         startTimeIso: result.startTime,
+        timezone,
       });
     } catch {
       // No-op: best-effort.

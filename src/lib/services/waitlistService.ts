@@ -250,6 +250,8 @@ export interface RespondToWaitlistOfferResult {
   result: WaitlistResponseResult;
   /** Nombre del negocio — presente salvo cuando `result` es `not_found`. */
   businessName?: string;
+  /** Zona horaria del negocio — para formatear bien la hora en los emails (nunca en UTC). */
+  businessTimezone?: string;
   /** Datos de quien responde — para poder enviarle un email de confirmación al aceptar. */
   customerName?: string;
   customerEmail?: string | null;
@@ -282,6 +284,7 @@ export async function respondToWaitlistOffer(
           result: WaitlistResponseResult;
           booking_id: string | null;
           business_name: string | null;
+          business_timezone: string | null;
           service_name: string | null;
           start_time: string | null;
           end_time: string | null;
@@ -307,6 +310,7 @@ export async function respondToWaitlistOffer(
   const out: RespondToWaitlistOfferResult = {
     result: row.result,
     businessName: row.business_name ?? undefined,
+    businessTimezone: row.business_timezone ?? undefined,
     customerName: row.customer_name ?? undefined,
     customerEmail: row.customer_email,
   };

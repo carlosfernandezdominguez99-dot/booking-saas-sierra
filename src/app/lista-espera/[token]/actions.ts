@@ -31,6 +31,7 @@ export async function respondToWaitlistOfferAction(
         businessName: result.businessName ?? "",
         serviceName: result.booking.serviceName,
         startTimeIso: result.booking.startTime,
+        timezone: result.businessTimezone ?? "Europe/Madrid",
       });
     } catch {
       // No-op: best-effort.
@@ -64,6 +65,7 @@ export async function respondToWaitlistOfferAction(
           businessName: result.businessName ?? "",
           serviceName: result.nextOffer.serviceName,
           startTimeIso: result.nextOffer.offeredStartTime,
+          timezone: result.businessTimezone ?? "Europe/Madrid",
           respondUrl,
         });
       } catch {

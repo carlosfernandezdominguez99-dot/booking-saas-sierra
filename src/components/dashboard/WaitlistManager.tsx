@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldError } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { cn } from "@/lib/utils/cn";
 import { addToWaitlistAction, deleteWaitlistEntryAction } from "@/app/dashboard/lista-espera/actions";
 import type { WaitlistEntryWithDetails } from "@/lib/services/waitlistService";
@@ -139,11 +140,10 @@ export function WaitlistManager({
           </div>
           <div>
             <Label>Día que quiere</Label>
-            <Input
-              type="date"
-              min={today}
+            <DatePicker
               value={draft.preferredDate}
-              onChange={(e) => setDraft((d) => ({ ...d, preferredDate: e.target.value }))}
+              onChange={(d) => setDraft((prev) => ({ ...prev, preferredDate: d }))}
+              todayStr={today}
             />
           </div>
         </div>

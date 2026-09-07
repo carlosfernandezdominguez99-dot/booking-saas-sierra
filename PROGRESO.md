@@ -401,9 +401,72 @@ Resend.
 
 ---
 
+## ✅ Fase 7.2 — Portal del cliente + corrección de hora en emails
+
+**Corregido:** el email de "se ha liberado un hueco" mostraba la hora en
+UTC en vez de en la zona horaria del negocio (`formatDateForEmail` tenía
+`timeZone: "UTC"` fijo en `emailService.ts`) — por eso no coincidía con la
+hora real de la cita ofertada. Ahora la zona horaria se pasa siempre desde
+donde se envía el email (confirmación, cancelación y oferta de lista de
+espera), incluida una columna nueva `business_timezone` en
+`respond_to_waitlist_offer` para el flujo público de aceptar/rechazar, que
+no tenía otra forma de saber la zona horaria del negocio.
+
+**Calendario para añadir a alguien a la lista de espera:** el formulario
+manual del panel (`/dashboard/lista-espera`) usaba un `<input type="date">`
+nativo; ahora usa el mismo selector visual (`DatePicker`, mes en
+cuadrícula con año y "Hoy") que ya se ve en `/dashboard/calendario`.
+
+**Portal del cliente (nuevo):** pediste que el cliente final pudiera
+apuntarse y borrarse él mismo de la lista de espera, y tener un panel con
+sus citas. Sigue sin hacer falta crear cuenta ni contraseña — se accede
+por un enlace personal de un solo negocio que llega por email y sirve
+también de "sesión" (30 días):
+
+- `/negocio/[slug]/mis-citas` — panel del cliente: pestaña **Inicio** (su
+  próxima cita y su lista de espera si está apuntado), **Próximas** y
+  **Pasadas**. Desde Inicio puede apuntarse a la lista de espera (mismo
+  selector de fecha) y quitarse con un clic.
+- Si no tiene sesión todavía, se le pide el teléfono o email con el que
+  reservó y se le manda un enlace de acceso por correo (mensaje siempre
+  igual, esté o no registrado ese contacto, para no filtrar información).
+- `/negocio/[slug]/lista-espera` (nueva, pública) — para quien quiere
+  apuntarse a la lista de espera SIN haber reservado antes; enlazada desde
+  el propio asistente de reserva cuando un día no tiene huecos ("Apuntarme
+  a la lista de espera →") y desde la página del negocio ("¿Ya reservaste
+  antes? Ver mis citas").
+- `supabase/migrations/0010_customer_portal.sql` (nueva, **hay que
+  ejecutarla en el SQL Editor**) — tabla `customer_access_tokens` (sin
+  políticas RLS propias, solo accesible a través de funciones `security
+  definer`) y 5 funciones nuevas: `request_customer_access`,
+  `get_customer_portal_data`, `join_waitlist_self`, `leave_waitlist_self`
+  y `join_waitlist_public`.
+
+**⚠️ Dos migraciones nuevas pendientes de ejecutar en el SQL Editor, en
+este orden:** `0009_respond_offer_timezone.sql` y
+`0010_customer_portal.sql`. Sin ellas, el panel y la página pública
+seguirán funcionando, pero el arreglo de la hora en el email y el portal
+del cliente darán error hasta que se ejecuten.
+
+**⚠️ Pendiente de tu lado — archivos de Stripe a borrar a mano:** no he
+podido borrar archivos directamente en tu ordenador en esta sesión (el
+entorno de comandos del dispositivo ha fallado al arrancar). Como pediste
+aparcar Stripe, borra estos 4 archivos manualmente (ya no los usa nada,
+son justo lo que había empezado a implementar de la Fase 8):
+
+- `supabase/migrations/0008_stripe.sql`
+- `src/lib/stripe/stripeService.ts`
+- `src/app/api/stripe/webhook/route.ts`
+- `src/components/dashboard/SubscriptionCard.tsx`
+
+---
+
 ## ⏳ Próximas fases
 
-- [ ] Fase 8 — Suscripciones/Stripe preparado
+- [ ] Fase 8 — Suscripciones/Stripe (aparcada de momento a petición tuya —
+  llegué a implementarla completa y mockeada, pero la quitamos para
+  centrarnos antes en el portal del cliente y otros ajustes; se retoma
+  más adelante)
 - [ ] Fase 9 — Testing + seguridad + revisión final
 
 ---

@@ -72,7 +72,7 @@ export default async function ConfiguracionPage() {
       <Card>
         <CardTitle>Suscripción</CardTitle>
         <CardDescription className="mb-4">
-          Plan único de 5 €/mes. La integración de pago (Stripe) llega en la Fase 8.
+          Plan único de 5 €/mes. La integración de pago (Stripe) se hará más adelante.
         </CardDescription>
         <span className="inline-flex items-center rounded-full bg-ink-100 px-3 py-1 text-sm font-medium text-ink-700">
           {STATUS_LABEL[business.subscription_status] ?? business.subscription_status}

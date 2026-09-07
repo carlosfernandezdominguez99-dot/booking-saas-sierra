@@ -82,6 +82,15 @@ export default async function PublicBusinessPage({ params }: PageProps) {
             </Link>
           </p>
         )}
+
+        <p className="mt-3 text-center">
+          <Link
+            href={`/negocio/${params.slug}/mis-citas`}
+            className="text-sm font-medium text-ink-400 hover:text-ink-700 hover:underline"
+          >
+            ¿Ya reservaste antes? Ver mis citas
+          </Link>
+        </p>
       </div>
     </main>
   );

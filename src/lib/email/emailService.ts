@@ -37,6 +37,8 @@ export interface BookingConfirmationEmailPayload {
   businessName: string;
   serviceName: string;
   startTimeIso: string;
+  /** Zona horaria del negocio (p. ej. "Europe/Madrid") — la hora se muestra en esta zona, nunca en UTC. */
+  timezone: string;
 }
 
 export interface CancellationEmailPayload {
@@ -45,6 +47,7 @@ export interface CancellationEmailPayload {
   businessName: string;
   serviceName: string;
   startTimeIso: string;
+  timezone: string;
 }
 
 export interface WaitlistOfferEmailPayload {
@@ -53,8 +56,28 @@ export interface WaitlistOfferEmailPayload {
   businessName: string;
   serviceName: string;
   startTimeIso: string;
+  timezone: string;
   /** Enlace público de un solo uso para aceptar/rechazar. */
   respondUrl: string;
+}
+
+export interface CustomerAccessEmailPayload {
+  toEmail: string;
+  customerName: string;
+  businessName: string;
+  /** Enlace de acceso al portal del cliente (válido 30 días). */
+  magicLink: string;
+}
+
+export interface WaitlistJoinConfirmationEmailPayload {
+  toEmail: string;
+  customerName: string;
+  businessName: string;
+  serviceName: string;
+  /** Fecha (YYYY-MM-DD) que pidió, ya formateada para mostrar. */
+  preferredDateLabel: string;
+  /** Enlace al portal del cliente, para poder consultar/darse de baja luego. */
+  portalLink: string;
 }
 
 const isConfigured = () => Boolean(process.env.RESEND_API_KEY);
@@ -92,13 +115,18 @@ async function sendEmail(to: string, subject: string, html: string): Promise<Ema
   }
 }
 
-function formatDateForEmail(iso: string): string {
-  // Aviso en la propia plantilla (ver más abajo) de que la hora exacta hay
-  // que confirmarla en el panel/página del negocio: aquí no se conoce la
-  // zona horaria del negocio (no viaja en los payloads actuales), así que
-  // se muestra en UTC en vez de arriesgarse a mostrar una hora equivocada.
+/**
+ * Formatea la fecha/hora en la zona horaria del NEGOCIO, no en UTC — un
+ * fallo anterior mostraba siempre la hora en UTC (p. ej. una cita a las
+ * 18:00 en Europe/Madrid salía como "17:00" o "16:00" en el email, según
+ * el horario de verano), que es la hora equivocada para el cliente. Todas
+ * las horas que se guardan en la base de datos son `timestamptz` (un
+ * instante absoluto) — la única forma correcta de mostrárselas a alguien
+ * es siempre convertidas a la zona horaria de ESE negocio.
+ */
+function formatDateForEmail(iso: string, timezone: string): string {
   return new Date(iso).toLocaleString("es-ES", {
-    timeZone: "UTC",
+    timeZone: timezone,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -123,7 +151,7 @@ export async function sendBookingConfirmationEmail(
     "¡Reserva confirmada!",
     `<p>Hola ${payload.customerName},</p>
      <p>Tu reserva en <strong>${payload.businessName}</strong> está confirmada:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso)} (hora UTC)</p>`,
+     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>`,
   );
   return sendEmail(payload.toEmail, `Reserva confirmada en ${payload.businessName}`, html);
 }
@@ -133,7 +161,7 @@ export async function sendCancellationEmail(payload: CancellationEmailPayload): 
     "Reserva cancelada",
     `<p>Hola ${payload.customerName},</p>
      <p>Tu reserva en <strong>${payload.businessName}</strong> ha sido cancelada:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso)} (hora UTC)</p>
+     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
      <p>Si quieres reservar otro momento, contacta con el negocio o vuelve a su página de reservas.</p>`,
   );
   return sendEmail(payload.toEmail, `Tu reserva en ${payload.businessName} ha sido cancelada`, html);
@@ -144,9 +172,35 @@ export async function sendWaitlistOfferEmail(payload: WaitlistOfferEmailPayload)
     "¡Se ha liberado un hueco!",
     `<p>Hola ${payload.customerName},</p>
      <p>Se ha liberado un hueco en <strong>${payload.businessName}</strong> que encaja con lo que pediste:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso)} (hora UTC)</p>
+     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
      <p><a href="${payload.respondUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Responder ahora</a></p>
      <p style="font-size:12px;color:#888;">Este enlace es de un solo uso y puede caducar si tarda demasiado en responderse.</p>`,
   );
   return sendEmail(payload.toEmail, `Hay un hueco libre en ${payload.businessName}`, html);
+}
+
+export async function sendCustomerAccessEmail(payload: CustomerAccessEmailPayload): Promise<EmailResult> {
+  const html = wrapEmail(
+    "Tu enlace de acceso",
+    `<p>Hola ${payload.customerName},</p>
+     <p>Aquí tienes tu enlace para ver tus citas en <strong>${payload.businessName}</strong>:</p>
+     <p><a href="${payload.magicLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mis citas</a></p>
+     <p style="font-size:12px;color:#888;">Este enlace es personal — no hace falta contraseña, y sigue funcionando durante 30 días.</p>`,
+  );
+  return sendEmail(payload.toEmail, `Tu enlace de acceso a ${payload.businessName}`, html);
+}
+
+export async function sendWaitlistJoinConfirmationEmail(
+  payload: WaitlistJoinConfirmationEmailPayload,
+): Promise<EmailResult> {
+  const html = wrapEmail(
+    "Apuntado a la lista de espera",
+    `<p>Hola ${payload.customerName},</p>
+     <p>Te hemos apuntado a la lista de espera de <strong>${payload.businessName}</strong>:</p>
+     <p><strong>${payload.serviceName}</strong><br/>Para el ${payload.preferredDateLabel}</p>
+     <p>Si se libera un hueco que encaje, te avisaremos por aquí con un enlace para confirmarlo.</p>
+     <p><a href="${payload.portalLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mi lista de espera</a></p>
+     <p style="font-size:12px;color:#888;">Desde ese enlace también puedes darte de baja si ya no te interesa.</p>`,
+  );
+  return sendEmail(payload.toEmail, `Apuntado a la lista de espera de ${payload.businessName}`, html);
 }

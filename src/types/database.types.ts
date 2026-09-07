@@ -468,6 +468,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      customer_access_tokens: {
+        Row: {
+          id: string;
+          customer_id: string;
+          business_id: string;
+          token: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          business_id: string;
+          token?: string;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          business_id?: string;
+          token?: string;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -520,6 +547,7 @@ export interface Database {
           result: "accepted" | "rejected" | "expired" | "not_found";
           booking_id: string | null;
           business_name: string | null;
+          business_timezone: string | null;
           service_name: string | null;
           start_time: string | null;
           end_time: string | null;
@@ -533,6 +561,52 @@ export interface Database {
           next_offered_start_time: string | null;
           next_offered_end_time: string | null;
           next_respond_token: string | null;
+        }[];
+      };
+      request_customer_access: {
+        Args: { p_business_id: string; p_contact: string };
+        Returns: {
+          customer_id: string;
+          customer_name: string;
+          customer_email: string;
+          token: string;
+        }[];
+      };
+      get_customer_portal_data: {
+        Args: { p_token: string };
+        Returns: {
+          valid: boolean;
+          business_name: string | null;
+          business_slug: string | null;
+          business_timezone: string | null;
+          customer_name: string | null;
+          upcoming_bookings: unknown;
+          past_bookings: unknown;
+          waitlist_entries: unknown;
+        }[];
+      };
+      join_waitlist_self: {
+        Args: { p_token: string; p_service_id: string; p_preferred_date: string };
+        Returns: { entry_id: string | null; error: string | null }[];
+      };
+      leave_waitlist_self: {
+        Args: { p_token: string; p_entry_id: string };
+        Returns: boolean;
+      };
+      join_waitlist_public: {
+        Args: {
+          p_business_id: string;
+          p_service_id: string;
+          p_preferred_date: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_customer_email: string;
+        };
+        Returns: {
+          entry_id: string | null;
+          customer_email: string | null;
+          access_token: string | null;
+          error: string | null;
         }[];
       };
     };

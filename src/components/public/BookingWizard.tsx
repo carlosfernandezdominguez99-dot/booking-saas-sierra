@@ -273,9 +273,15 @@ export function BookingWizard({
             ) : slotsError ? (
               <p className="py-6 text-center text-sm text-red-600">{slotsError}</p>
             ) : slots.length === 0 ? (
-              <p className="py-6 text-center text-sm text-ink-400">
-                No hay huecos disponibles ese día — prueba con otra fecha.
-              </p>
+              <div className="py-6 text-center text-sm text-ink-400">
+                <p>No hay huecos disponibles ese día — prueba con otra fecha.</p>
+                <Link
+                  href={`/negocio/${slug}/lista-espera?servicio=${selectedService.id}`}
+                  className="mt-2 inline-block font-medium text-brand-600 hover:underline"
+                >
+                  Apuntarme a la lista de espera →
+                </Link>
+              </div>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {slots.map((slot) => (

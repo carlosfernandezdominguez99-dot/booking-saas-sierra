@@ -34,6 +34,7 @@ export async function cancelBookingAction(bookingId: string): Promise<SimpleActi
           businessName: business.name,
           serviceName: contactInfo.serviceName,
           startTimeIso: contactInfo.startTime,
+          timezone: business.timezone,
         });
       } catch {
         // No-op: best-effort.
@@ -65,6 +66,7 @@ export async function cancelBookingAction(bookingId: string): Promise<SimpleActi
               businessName: business.name,
               serviceName: offer.serviceName,
               startTimeIso: offer.offeredStartTime,
+              timezone: business.timezone,
               respondUrl,
             });
           } catch {
