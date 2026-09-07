@@ -72,18 +72,7 @@ export default async function PublicBusinessPage({ params }: PageProps) {
           </div>
         )}
 
-        {services.length > 0 && (
-          <p className="mt-8 text-center">
-            <Link
-              href={`/negocio/${params.slug}/reservar`}
-              className="text-sm font-medium text-brand-600 hover:underline"
-            >
-              Ver todos los huecos disponibles →
-            </Link>
-          </p>
-        )}
-
-        <p className="mt-3 text-center">
+        <p className="mt-8 text-center">
           <Link
             href={`/negocio/${params.slug}/mis-citas`}
             className="text-sm font-medium text-ink-400 hover:text-ink-700 hover:underline"
