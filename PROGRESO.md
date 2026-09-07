@@ -496,6 +496,16 @@ pasa nada: `0012` deshace esas tablas/funciones ella sola).
   cuenta en `/mis-citas` con el mismo email, en vez de mandar un enlace de
   acceso de un solo negocio.
 
+**Ajuste pedido después:** si alguien intenta iniciar sesión con un email
+que no tiene cuenta, ahora se le avisa ("No tienes ninguna cuenta con ese
+email") y la pantalla salta sola a la pestaña de "Crear cuenta" con ese
+mismo email ya puesto, en vez del mensaje genérico de antes. A propósito
+se distingue este caso del de "contraseña incorrecta" (que sí sigue dando
+un mensaje aparte) — para una app de reservas no es información sensible
+saber si un email tiene cuenta o no, así que prima la comodidad.
+`supabase/migrations/0013_customer_login_hint.sql` (nueva, **hay que
+ejecutarla en el SQL Editor**, después de `0012`).
+
 **⚠️ Archivos que ya no existen y hay que borrar de tu carpeta** (los
 sustituye todo lo de arriba):
 

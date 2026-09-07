@@ -14,6 +14,8 @@ export interface AuthActionInput {
 
 export interface AuthActionResult {
   error?: string;
+  /** Solo en login: true cuando ese email no tiene ninguna cuenta todavía. */
+  accountNotFound?: boolean;
 }
 
 export async function signupAction(input: AuthActionInput): Promise<AuthActionResult> {
@@ -43,7 +45,7 @@ export async function loginAction(input: AuthActionInput): Promise<AuthActionRes
   const result = await customerLogin(supabase, input.email, input.password);
 
   if (result.error || !result.sessionToken) {
-    return { error: result.error ?? "No se pudo iniciar sesión." };
+    return { error: result.error ?? "No se pudo iniciar sesión.", accountNotFound: result.accountNotFound };
   }
 
   await setCustomerSessionToken(result.sessionToken);

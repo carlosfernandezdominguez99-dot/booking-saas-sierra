@@ -614,7 +614,7 @@ export interface Database {
       };
       customer_login: {
         Args: { p_email: string; p_password: string };
-        Returns: { session_token: string | null; error: string | null }[];
+        Returns: { session_token: string | null; error: string | null; account_not_found: boolean | null }[];
       };
       customer_logout: {
         Args: { p_token: string };

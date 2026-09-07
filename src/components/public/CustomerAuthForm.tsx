@@ -18,17 +18,33 @@ export function CustomerAuthForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     startTransition(async () => {
-      const res =
-        mode === "login"
-          ? await loginAction({ email, password })
-          : await signupAction({ email, password, name, phone });
+      if (mode === "login") {
+        const res = await loginAction({ email, password });
+        if (res.error) {
+          if (res.accountNotFound) {
+            // Pedido explícito: si intenta entrar y no tiene cuenta, se le
+            // avisa y se pasa solo a la pestaña de registro (con el email
+            // ya puesto) en vez de dejarle un mensaje genérico de error.
+            setMode("signup");
+            setNotice("No tienes ninguna cuenta con ese email — regístrate abajo.");
+            return;
+          }
+          setError(res.error);
+          return;
+        }
+        window.location.reload();
+        return;
+      }
 
+      const res = await signupAction({ email, password, name, phone });
       if (res.error) {
         setError(res.error);
         return;
@@ -54,6 +70,7 @@ export function CustomerAuthForm() {
           onClick={() => {
             setMode("login");
             setError(null);
+            setNotice(null);
           }}
           className={cn(
             "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
@@ -67,6 +84,7 @@ export function CustomerAuthForm() {
           onClick={() => {
             setMode("signup");
             setError(null);
+            setNotice(null);
           }}
           className={cn(
             "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
@@ -117,6 +135,7 @@ export function CustomerAuthForm() {
           />
         </div>
 
+        {notice && <Alert tone="info">{notice}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
 
         <Button type="submit" className="w-full" loading={isPending}>

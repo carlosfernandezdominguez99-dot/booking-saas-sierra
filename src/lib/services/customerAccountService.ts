@@ -21,6 +21,8 @@ export interface SignupParams {
 export interface AuthResult {
   sessionToken?: string;
   error?: string;
+  /** Solo relevante en login: true cuando el email no corresponde a ninguna cuenta. */
+  accountNotFound?: boolean;
 }
 
 export async function customerSignup(client: TypedClient, params: SignupParams): Promise<AuthResult> {
@@ -50,14 +52,14 @@ export async function customerLogin(
     p_email: email,
     p_password: password,
   })) as unknown as {
-    data: { session_token: string | null; error: string | null }[] | null;
+    data: { session_token: string | null; error: string | null; account_not_found: boolean | null }[] | null;
     error: { message: string } | null;
   };
   if (error) throw error;
 
   const row = data?.[0];
   if (!row) return { error: "No se pudo iniciar sesión." };
-  if (row.error) return { error: row.error };
+  if (row.error) return { error: row.error, accountNotFound: row.account_not_found ?? undefined };
   return { sessionToken: row.session_token ?? undefined };
 }
 
