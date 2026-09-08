@@ -2,10 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlots, type AvailableSlot } from "@/lib/services/availabilityService";
-import { createPublicBooking, type PublicBookingResult } from "@/lib/services/bookingService";
+import type { PublicBookingResult } from "@/lib/services/bookingService";
+import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
+import { createAccountBooking, getCustomerAccountProfile } from "@/lib/services/customerAccountService";
 import { sendBookingConfirmation } from "@/lib/whatsapp/whatsappService";
 import { sendBookingConfirmationEmail } from "@/lib/email/emailService";
-import { publicBookingContactSchema } from "@/lib/validations/publicBooking";
 
 export interface GetSlotsActionInput {
   businessId: string;
@@ -30,9 +31,9 @@ export interface GetSlotsActionResult {
  * Se llama directamente como función desde el cliente (no como `<form
  * action>`) cada vez que el visitante cambia de día en el selector de
  * fecha — igual que el resto de acciones "de lectura" del proyecto que se
- * invocan con `useTransition`. Usa el cliente `anon` (sin sesión): la
- * función de Postgres que hay detrás tiene `execute` concedido a `anon`
- * precisamente para esto.
+ * invocan con `useTransition`. Sigue siendo de lectura pública (`anon`
+ * conserva el `execute` de `get_available_slots`) — ver
+ * `0014_require_account_booking.sql`, que solo revoca las de ESCRITURA.
  */
 export async function getSlotsAction(input: GetSlotsActionInput): Promise<GetSlotsActionResult> {
   try {
@@ -44,65 +45,61 @@ export async function getSlotsAction(input: GetSlotsActionInput): Promise<GetSlo
   }
 }
 
-export interface CreatePublicBookingActionInput {
+export interface CreateAccountBookingActionInput {
   businessId: string;
   serviceId: string;
   /** ISO timestamptz del hueco elegido (debe ser uno de los `slotStart` devueltos por `getSlotsAction`). */
   startTime: string;
-  customerName: string;
-  customerPhone: string;
-  /** Obligatorio — ver `publicBookingContactSchema`. */
-  customerEmail: string;
   comment?: string;
 }
 
-export interface CreatePublicBookingActionResult {
+export interface CreateAccountBookingActionResult {
   result?: PublicBookingResult;
   error?: string;
-  fieldErrors?: Record<string, string>;
 }
 
 /**
- * Crea la reserva pública. Revalida el hueco en Postgres (nunca en el
- * cliente) — si alguien más se adelantó a por el mismo hueco entre que se
- * cargaron los huecos disponibles y que este visitante confirmó, la
- * función de base de datos lo rechaza con un mensaje claro
- * ("Ese horario ya no está disponible") en vez de crear un solape.
+ * Reemplaza a la antigua `createPublicBookingAction` (Fase 7.4): ya no
+ * hace falta ni se pueden mandar nombre/teléfono/email desde el
+ * formulario — se reserva con la cuenta que tenga la sesión (cookie
+ * `zoria_customer_session`), y es la propia base de datos la que usa sus
+ * datos guardados (`create_account_booking`, que a su vez llama a
+ * `create_public_booking` por dentro). Si no hay sesión válida, la
+ * reserva ni se intenta — la página ya no debería haber llegado hasta
+ * aquí sin cuenta, pero se revalida también aquí por si la cookie caducó
+ * mientras el visitante tenía la página abierta.
  */
-export async function createPublicBookingAction(
-  input: CreatePublicBookingActionInput,
-): Promise<CreatePublicBookingActionResult> {
-  const parsed = publicBookingContactSchema.safeParse({
-    customerName: input.customerName,
-    customerPhone: input.customerPhone,
-    customerEmail: input.customerEmail,
-    comment: input.comment ?? "",
-  });
-
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const key = issue.path[0];
-      if (typeof key === "string" && !fieldErrors[key]) fieldErrors[key] = issue.message;
-    }
-    return { error: "Revisa los campos marcados.", fieldErrors };
-  }
+export async function createAccountBookingAction(
+  input: CreateAccountBookingActionInput,
+): Promise<CreateAccountBookingActionResult> {
+  const token = await getCustomerSessionToken();
+  if (!token) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
 
   try {
     const supabase = await createClient();
-    const result = await createPublicBooking(supabase, {
+
+    // Hace falta el nombre/teléfono/email de la cuenta para el email/
+    // WhatsApp de confirmación (la reserva en sí ya los toma internamente
+    // en Postgres, pero esos avisos se mandan desde aquí).
+    const profile = await getCustomerAccountProfile(supabase, token);
+    if (!profile) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
+
+    const comment = (input.comment ?? "").trim().slice(0, 300);
+
+    // Revalida el hueco de verdad en Postgres (nunca se fía de lo que haya
+    // calculado el cliente con `getAvailableSlots`) — si alguien más se
+    // adelantó a por el mismo hueco entre medias, la función de base de
+    // datos lo rechaza con un mensaje claro.
+    const result = await createAccountBooking(supabase, token, {
       businessId: input.businessId,
       serviceId: input.serviceId,
       startTime: input.startTime,
-      customerName: parsed.data.customerName,
-      customerPhone: parsed.data.customerPhone,
-      customerEmail: parsed.data.customerEmail,
-      comment: parsed.data.comment || null,
+      comment: comment || null,
     });
 
     // Hace falta la zona horaria del negocio para mostrar la hora
     // correcta en el email de confirmación (nunca en UTC) — se busca
-    // aparte porque `create_public_booking` no la devuelve. Lectura
+    // aparte porque `create_account_booking` no la devuelve. Lectura
     // pública normal (RLS ya deja leer negocios activos a `anon`).
     const { data: businessRow } = await (supabase.from("businesses") as any)
       .select("timezone")
@@ -117,8 +114,8 @@ export async function createPublicBookingAction(
     // cliente.
     try {
       await sendBookingConfirmation({
-        toPhone: parsed.data.customerPhone,
-        customerName: parsed.data.customerName,
+        toPhone: profile.phone,
+        customerName: profile.name,
         businessName: result.businessName,
         serviceName: result.serviceName,
         startTimeIso: result.startTime,
@@ -131,8 +128,8 @@ export async function createPublicBookingAction(
     // (ver `emailService.ts`). Mismo motivo para el try/catch aparte.
     try {
       await sendBookingConfirmationEmail({
-        toEmail: parsed.data.customerEmail,
-        customerName: parsed.data.customerName,
+        toEmail: profile.email,
+        customerName: profile.name,
         businessName: result.businessName,
         serviceName: result.serviceName,
         startTimeIso: result.startTime,

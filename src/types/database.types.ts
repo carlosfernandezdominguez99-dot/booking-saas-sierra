@@ -633,6 +633,37 @@ export interface Database {
         Args: { p_token: string; p_entry_id: string };
         Returns: boolean;
       };
+      get_customer_account_profile: {
+        Args: { p_token: string };
+        Returns: { valid: boolean; name: string | null; email: string | null; phone: string | null }[];
+      };
+      create_account_booking: {
+        Args: {
+          p_token: string;
+          p_business_id: string;
+          p_service_id: string;
+          p_start_time: string;
+          p_comment?: string | null;
+        };
+        Returns: {
+          booking_id: string;
+          business_name: string;
+          service_name: string;
+          price_cents: number;
+          start_time: string;
+          end_time: string;
+          status: string;
+        }[];
+      };
+      join_waitlist_by_account: {
+        Args: {
+          p_token: string;
+          p_business_id: string;
+          p_service_id: string;
+          p_preferred_date: string;
+        };
+        Returns: { entry_id: string | null; error: string | null }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

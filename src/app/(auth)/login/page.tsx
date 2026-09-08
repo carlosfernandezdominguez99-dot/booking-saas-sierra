@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { Card } from "@/components/ui/Card";
-import { LoginForm } from "./LoginForm";
+import { AccountTypeLogin } from "./AccountTypeLogin";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
 
@@ -32,9 +31,7 @@ export default function LoginPage() {
         </div>
 
         <Card>
-          <Suspense>
-            <LoginForm />
-          </Suspense>
+          <AccountTypeLogin />
         </Card>
 
         <p className="mt-6 text-center text-sm text-white/40">

@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
 import { todayInTimezone } from "@/lib/utils/timezone";
 import { WaitlistJoinForm } from "@/components/public/WaitlistJoinForm";
+import { CustomerAuthForm } from "@/components/public/CustomerAuthForm";
+import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
+import { getCustomerAccountProfile } from "@/lib/services/customerAccountService";
 
 interface PageProps {
   params: { slug: string };
@@ -30,6 +34,23 @@ export default async function ListaEsperaPublicaPage({ params, searchParams }: P
 
   const today = todayInTimezone(business.timezone);
 
+  // Igual que en `/reservar`: hace falta cuenta para apuntarse a la lista
+  // de espera (`join_waitlist_public` también le quitó el `execute` a
+  // `anon` en `0014_require_account_booking.sql`).
+  const token = await getCustomerSessionToken();
+  let accountProfile: { name: string; email: string; phone: string } | null = null;
+  if (token) {
+    try {
+      const supabase = await createClient();
+      accountProfile = await getCustomerAccountProfile(supabase, token);
+    } catch {
+      accountProfile = null;
+    }
+  }
+
+  const redirectQuery = queryServiceId ? `?servicio=${encodeURIComponent(queryServiceId)}` : "";
+  const redirectTo = `/negocio/${params.slug}/lista-espera${redirectQuery}`;
+
   return (
     <main className="min-h-screen bg-surface">
       <div className="container-app max-w-xl py-10">
@@ -43,13 +64,22 @@ export default async function ListaEsperaPublicaPage({ params, searchParams }: P
           </p>
         </div>
 
-        <WaitlistJoinForm
-          slug={params.slug}
-          businessName={business.name}
-          services={services.map((s) => ({ id: s.id, name: s.name }))}
-          today={today}
-          initialServiceId={effectiveServiceId}
-        />
+        {!accountProfile ? (
+          <CustomerAuthForm
+            initialMode="login"
+            redirectTo={redirectTo}
+            title="Inicia sesión para apuntarte"
+            description={`Para apuntarte a la lista de espera de ${business.name} hace falta una cuenta gratuita.`}
+          />
+        ) : (
+          <WaitlistJoinForm
+            slug={params.slug}
+            businessName={business.name}
+            services={services.map((s) => ({ id: s.id, name: s.name }))}
+            today={today}
+            initialServiceId={effectiveServiceId}
+          />
+        )}
       </div>
     </main>
   );

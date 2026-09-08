@@ -44,6 +44,15 @@ export interface PublicBookingResult {
  * Lanza un `Error` con el mensaje de negocio tal cual lo da la función
  * (p. ej. "Ese horario ya no está disponible", "Servicio no disponible")
  * para poder mostrarlo directamente al usuario sin traducir códigos.
+ *
+ * @deprecated Desde `0014_require_account_booking.sql` ya no se puede
+ * reservar sin cuenta: a `create_public_booking` se le quitó el `execute`
+ * de `anon`/`authenticated`, así que llamar a esta función ahora falla con
+ * un error de permisos de Postgres. La usa internamente
+ * `create_account_booking` (que sí conserva el permiso, por ser quien la
+ * llama y no quien conecta) — para reservar desde fuera, usa
+ * `createAccountBooking` en `customerAccountService.ts`. Se deja aquí tal
+ * cual (sin borrar) porque esa función interna sigue dependiendo de ella.
  */
 export async function createPublicBooking(
   client: TypedClient,

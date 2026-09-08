@@ -576,6 +576,64 @@ y cambiar las variables de entorno.
 
 ---
 
+## ✅ Fase 7.4 — Cuenta obligatoria para reservar + selector negocio/cliente
+
+Pedido explícito de Carlos: ya no se puede reservar ni apuntarse a la
+lista de espera sin haber iniciado sesión con una cuenta de cliente (la
+misma de "Mis citas", Fase 7.3) — y al crear una cuenta (en `/registro` o
+en `/mis-citas`) hay que elegir si eres un negocio o un cliente, porque
+cada uno lleva a un sitio distinto.
+
+**Implementado:**
+
+- `supabase/migrations/0014_require_account_booking.sql` (nueva, **hay
+  que ejecutarla en el SQL Editor**, después de `0013`) — el cierre real
+  está aquí, no en el frontend: le quita a `create_public_booking` y a
+  `join_waitlist_public` el permiso de ejecución de `anon`/`authenticated`
+  (la API pública de Supabase ya no puede llamarlas directamente, aunque
+  alguien use la clave `anon` a mano). Crea tres funciones nuevas que sí
+  quedan accesibles porque resuelven la cuenta a partir del token de
+  sesión antes de reservar: `create_account_booking`,
+  `join_waitlist_by_account` y `get_customer_account_profile` — las dos
+  primeras llaman por dentro a las de siempre (no duplican la lógica de
+  revalidar el hueco ni evitar solapes).
+- `/negocio/[slug]/reservar` y `/negocio/[slug]/lista-espera` — si no hay
+  sesión de cliente válida, en vez del formulario se enseña directamente
+  el login/registro de cliente (con vuelta automática a la misma página,
+  incluido el servicio elegido, en cuanto entra). Si ya hay sesión, el
+  asistente de reserva ya NO pide nombre/teléfono/email: los toma de la
+  cuenta y solo los enseña de forma informativa ("Reservas como...") antes
+  de confirmar.
+- `/login` y `/registro` — ahora tienen arriba un selector "Soy un
+  negocio" / "Soy cliente". "Soy un negocio" es el formulario de siempre
+  (Supabase Auth, panel de gestión). "Soy cliente" es el mismo
+  login/registro de `/mis-citas` incrustado ahí mismo, y al entrar lleva
+  directo a `/mis-citas`.
+- `customerAccountService.ts` — nuevas funciones `getCustomerAccountProfile`,
+  `createAccountBooking`, `joinWaitlistByAccount` que envuelven las tres
+  funciones nuevas de arriba.
+- `createPublicBooking` (`bookingService.ts`) y `joinWaitlistPublic`
+  (`waitlistService.ts`) se dejan en el código tal cual (las siguen usando
+  por dentro las funciones nuevas) pero marcadas como `@deprecated` —
+  llamarlas directamente desde fuera ahora falla con un error de permisos
+  de Postgres, a propósito.
+
+**⚠️ Antes de dar esto por bueno:**
+
+1. Ejecuta `supabase/migrations/0014_require_account_booking.sql` en el
+   SQL Editor de Supabase (después de `0012` y `0013`, si no las habías
+   ejecutado ya).
+2. Prueba a reservar sin haber iniciado sesión — debe pedir cuenta antes
+   de dejarte elegir hueco.
+3. Prueba el selector "Soy cliente" en `/login` y `/registro`.
+
+**Nota de diseño (por si en el futuro cambias de opinión):** este cambio
+reemplaza la decisión original del proyecto ("los clientes reservan sin
+crear cuenta ni instalar app") — queda así a partir de este pedido
+explícito tuyo.
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 9 — Testing + seguridad + revisión final

@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Input, FieldError } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { addDaysToDateString } from "@/lib/utils/timezone";
 import type { AvailableSlot } from "@/lib/services/availabilityService";
 import type { PublicBookingResult } from "@/lib/services/bookingService";
-import { createPublicBookingAction, getSlotsAction } from "@/app/negocio/[slug]/reservar/actions";
+import { createAccountBookingAction, getSlotsAction } from "@/app/negocio/[slug]/reservar/actions";
 
 export interface PublicServiceLite {
   id: string;
@@ -40,6 +39,12 @@ function formatDateLong(dateStr: string, timezone: string): string {
   });
 }
 
+export interface BookingAccountProfile {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export function BookingWizard({
   slug,
   businessId,
@@ -49,6 +54,7 @@ export function BookingWizard({
   initialServiceId,
   initialDate,
   initialSlots,
+  accountProfile,
 }: {
   slug: string;
   businessId: string;
@@ -58,6 +64,14 @@ export function BookingWizard({
   initialServiceId: string | null;
   initialDate: string;
   initialSlots: AvailableSlot[];
+  /**
+   * Nombre/email/teléfono de la cuenta con la que se ha iniciado sesión —
+   * la página ya no deja llegar hasta aquí sin cuenta (Fase 7.4). Se usan
+   * tal cual para reservar, sin volver a pedirlos: `createAccountBookingAction`
+   * los toma de la cuenta en el servidor, así que esto es solo para
+   * enseñárselos al cliente en el paso de confirmación.
+   */
+  accountProfile: BookingAccountProfile;
 }) {
   // `initialServiceId` ya viene resuelto desde el servidor (Página →
   // `?servicio=` si es válido, o el único servicio si solo hay uno) — así
@@ -72,11 +86,7 @@ export function BookingWizard({
   const [isLoadingSlots, startSlotsTransition] = useTransition();
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [bookingResult, setBookingResult] = useState<PublicBookingResult | null>(null);
@@ -131,30 +141,23 @@ export function BookingWizard({
     e.preventDefault();
     if (!selectedService || !selectedSlot) return;
     setFormError(null);
-    setFieldErrors({});
 
     startSubmitTransition(async () => {
-      const res = await createPublicBookingAction({
+      const res = await createAccountBookingAction({
         businessId,
         serviceId: selectedService.id,
         startTime: selectedSlot.slotStart,
-        customerName: name,
-        customerPhone: phone,
-        customerEmail: email,
         comment,
       });
 
       if (res.error) {
         setFormError(res.error);
-        setFieldErrors(res.fieldErrors ?? {});
         // El hueco pudo dejar de estar disponible entre medias (alguien se
         // adelantó): se vuelve a la selección de fecha/hora con los
         // huecos recién pedidos, en vez de dejar al visitante reintentando
         // un hueco que ya no existe.
-        if (!res.fieldErrors) {
-          setStep("datetime");
-          loadSlots(selectedService.id, selectedDate);
-        }
+        setStep("datetime");
+        loadSlots(selectedService.id, selectedDate);
         return;
       }
 
@@ -186,7 +189,7 @@ export function BookingWizard({
                   step === s ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-500",
                 )}
               >
-                {s === "service" ? "Servicio" : s === "datetime" ? "Fecha y hora" : "Tus datos"}
+                {s === "service" ? "Servicio" : s === "datetime" ? "Fecha y hora" : "Confirmar"}
               </span>
             </li>
           ))}
@@ -317,38 +320,13 @@ export function BookingWizard({
           </Card>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Input
-                placeholder="Tu nombre"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                error={fieldErrors.customerName}
-                required
-              />
-              <FieldError message={fieldErrors.customerName} />
-            </div>
-            <div>
-              <Input
-                type="tel"
-                placeholder="Tu teléfono"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                error={fieldErrors.customerPhone}
-                required
-              />
-              <FieldError message={fieldErrors.customerPhone} />
-            </div>
-            <div>
-              <Input
-                type="email"
-                placeholder="Tu email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={fieldErrors.customerEmail}
-                required
-              />
-              <FieldError message={fieldErrors.customerEmail} />
-            </div>
+            <Card className="space-y-1 bg-ink-50">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-400">Reservas como</p>
+              <p className="font-medium text-ink-900">{accountProfile.name}</p>
+              <p className="text-sm text-ink-500">
+                {accountProfile.email} · {accountProfile.phone}
+              </p>
+            </Card>
             <div>
               <textarea
                 placeholder="¿Algo que debamos saber? (opcional)"

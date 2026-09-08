@@ -369,6 +369,15 @@ export interface JoinWaitlistPublicResult {
  * — ver `join_waitlist_public` en `0012_customer_accounts.sql`). Si más
  * adelante ese email se registra en `/mis-citas`, esta entrada aparecerá
  * igual en su panel — la agregación es por email, no por cómo se creó.
+ *
+ * @deprecated Desde `0014_require_account_booking.sql` ya no se puede
+ * apuntar a la lista de espera sin cuenta: a `join_waitlist_public` se le
+ * quitó el `execute` de `anon`/`authenticated`, así que llamar a esta
+ * función ahora falla con un error de permisos de Postgres. La usa
+ * internamente `join_waitlist_by_account` (que sí conserva el permiso, por
+ * ser quien la llama y no quien conecta) — para apuntar desde fuera, usa
+ * `joinWaitlistByAccount` en `customerAccountService.ts`. Se deja aquí tal
+ * cual (sin borrar) porque esa función interna sigue dependiendo de ella.
  */
 export async function joinWaitlistPublic(
   client: TypedClient,

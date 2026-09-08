@@ -3,12 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Input, FieldError } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Card } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { joinWaitlistPublicAction } from "@/app/negocio/[slug]/lista-espera/actions";
+import { joinWaitlistByAccountAction } from "@/app/negocio/[slug]/lista-espera/actions";
 
 export interface WaitlistServiceLite {
   id: string;
@@ -30,10 +29,6 @@ export function WaitlistJoinForm({
 }) {
   const [serviceId, setServiceId] = useState(initialServiceId ?? "");
   const [preferredDate, setPreferredDate] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -41,7 +36,6 @@ export function WaitlistJoinForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    setFieldErrors({});
 
     if (!serviceId || !preferredDate) {
       setFormError("Elige un servicio y un día.");
@@ -49,17 +43,10 @@ export function WaitlistJoinForm({
     }
 
     startTransition(async () => {
-      const res = await joinWaitlistPublicAction(slug, {
-        serviceId,
-        preferredDate,
-        customerName: name,
-        customerPhone: phone,
-        customerEmail: email,
-      });
+      const res = await joinWaitlistByAccountAction(slug, { serviceId, preferredDate });
 
       if (res.error) {
         setFormError(res.error);
-        setFieldErrors(res.fieldErrors ?? {});
         return;
       }
 
@@ -88,7 +75,11 @@ export function WaitlistJoinForm({
           </p>
         </div>
         <p className="text-xs text-ink-400">
-          Te hemos enviado un email con un enlace para consultar o darte de baja de la lista de espera cuando quieras.
+          Puedes consultar o darte de baja de la lista de espera cuando quieras desde{" "}
+          <Link href="/mis-citas" className="font-medium text-brand-600 hover:underline">
+            Mis citas
+          </Link>
+          .
         </p>
         <Link href={`/negocio/${slug}`} className="inline-block text-sm font-medium text-brand-600 hover:underline">
           Volver a la página de {businessName}
@@ -118,38 +109,6 @@ export function WaitlistJoinForm({
         <div>
           <Label>Día que te viene bien</Label>
           <DatePicker value={preferredDate} onChange={setPreferredDate} todayStr={today} />
-        </div>
-        <div>
-          <Input
-            placeholder="Tu nombre"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            error={fieldErrors.customerName}
-            required
-          />
-          <FieldError message={fieldErrors.customerName} />
-        </div>
-        <div>
-          <Input
-            type="tel"
-            placeholder="Tu teléfono"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            error={fieldErrors.customerPhone}
-            required
-          />
-          <FieldError message={fieldErrors.customerPhone} />
-        </div>
-        <div>
-          <Input
-            type="email"
-            placeholder="Tu email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={fieldErrors.customerEmail}
-            required
-          />
-          <FieldError message={fieldErrors.customerEmail} />
         </div>
 
         {formError && <Alert tone="error">{formError}</Alert>}

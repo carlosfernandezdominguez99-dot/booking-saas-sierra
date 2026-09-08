@@ -11,8 +11,34 @@ import { signupAction, loginAction } from "@/app/mis-citas/actions";
 
 type Mode = "login" | "signup";
 
-export function CustomerAuthForm() {
-  const [mode, setMode] = useState<Mode>("login");
+export function CustomerAuthForm({
+  initialMode = "login",
+  redirectTo,
+  bare = false,
+  title = "Mis citas",
+  description = "Una cuenta para ver tus citas en cualquier negocio que use ZoriaBooking.",
+}: {
+  /** Pestaña con la que arranca el formulario. Por defecto "login". */
+  initialMode?: Mode;
+  /**
+   * A dónde ir tras un login/registro correcto. Si no se da, se recarga la
+   * página actual (comportamiento de siempre en `/mis-citas`, donde el
+   * Server Component ya sabe pintar el panel una vez hay cookie). Se usa
+   * `redirectTo` cuando este formulario aparece incrustado en otra página
+   * (p. ej. el aviso de "inicia sesión para reservar") y hay que volver
+   * justo a donde estaba el visitante, no solo recargar.
+   */
+  redirectTo?: string;
+  /**
+   * Sin la tarjeta ni el encabezado propios — para cuando ya los pone la
+   * página que lo incrusta (p. ej. el selector "Soy negocio"/"Soy cliente"
+   * de `/login` y `/registro`).
+   */
+  bare?: boolean;
+  title?: string;
+  description?: string;
+}) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -20,6 +46,14 @@ export function CustomerAuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  function goToDestination() {
+    if (redirectTo) {
+      window.location.href = redirectTo;
+      return;
+    }
+    window.location.reload();
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +74,7 @@ export function CustomerAuthForm() {
           setError(res.error);
           return;
         }
-        window.location.reload();
+        goToDestination();
         return;
       }
 
@@ -50,20 +84,14 @@ export function CustomerAuthForm() {
         return;
       }
       // Éxito: la Server Action ya puso la cookie y revalidó la ruta, así
-      // que basta con recargar para que el Server Component pinte el panel.
-      window.location.reload();
+      // que basta con recargar (o ir a `redirectTo`) para que se pinte el
+      // siguiente paso ya con sesión.
+      goToDestination();
     });
   }
 
-  return (
-    <Card className="space-y-5">
-      <div>
-        <h1 className="text-lg font-semibold text-ink-950">Mis citas</h1>
-        <p className="mt-1 text-sm text-ink-500">
-          Una cuenta para ver tus citas en cualquier negocio que use ZoriaBooking.
-        </p>
-      </div>
-
+  const body = (
+    <>
       <div className="flex gap-1 rounded-xl bg-ink-100 p-1">
         <button
           type="button"
@@ -148,6 +176,20 @@ export function CustomerAuthForm() {
           Usa el mismo email con el que reservaste antes y verás ahí también esas citas.
         </p>
       )}
+    </>
+  );
+
+  if (bare) {
+    return <div className="space-y-5">{body}</div>;
+  }
+
+  return (
+    <Card className="space-y-5">
+      <div>
+        <h1 className="text-lg font-semibold text-ink-950">{title}</h1>
+        <p className="mt-1 text-sm text-ink-500">{description}</p>
+      </div>
+      {body}
     </Card>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/Card";
-import { RegisterForm } from "./RegisterForm";
+import { AccountTypeRegistro } from "./AccountTypeRegistro";
 
 export const metadata: Metadata = { title: "Crea tu cuenta" };
 
@@ -33,7 +33,7 @@ export default function RegistroPage() {
         </div>
 
         <Card>
-          <RegisterForm />
+          <AccountTypeRegistro />
         </Card>
 
         <p className="mt-6 text-center text-sm text-white/40">
