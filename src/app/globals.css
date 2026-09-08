@@ -14,6 +14,19 @@
   ::selection {
     @apply bg-brand-200 text-brand-950;
   }
+
+  /* Quita las flechitas nativas de subir/bajar en los campos numéricos
+     (p. ej. "días de antelación", "minutos de descanso" en la
+     configuración del negocio) — sobraban visualmente y no aportaban nada
+     que no diera ya el teclado. */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 @layer utilities {

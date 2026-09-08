@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
+import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -19,6 +20,13 @@ export default async function PublicBusinessPage({ params }: PageProps) {
 
   if (!result) notFound();
   const { business, services } = result;
+
+  // Si ya hay sesión de cliente iniciada, no tiene sentido preguntarle "¿ya
+  // reservaste antes?" — se le enseña directamente el enlace a su panel.
+  // Solo se comprueba que exista la cookie (no se valida contra la base de
+  // datos): si estuviera caducada, el enlace lleva a `/mis-citas`, que ya
+  // sabe pedir que vuelva a iniciar sesión.
+  const hasCustomerSession = Boolean(await getCustomerSessionToken());
 
   return (
     <main className="min-h-screen bg-surface">
@@ -77,7 +85,7 @@ export default async function PublicBusinessPage({ params }: PageProps) {
             href="/mis-citas"
             className="text-sm font-medium text-ink-400 hover:text-ink-700 hover:underline"
           >
-            ¿Ya reservaste antes? Ver mis citas
+            {hasCustomerSession ? "Ver mis citas" : "¿Ya reservaste antes? Ver mis citas"}
           </Link>
         </p>
       </div>

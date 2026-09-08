@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
@@ -29,8 +30,23 @@ export default async function MisCitasPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface">
-      <div className={`container-app py-12 ${accountData ? "max-w-xl" : "max-w-md"}`}>
+    <main className="relative min-h-screen overflow-hidden bg-surface">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden"
+      >
+        <div className="absolute left-1/2 top-[-8rem] h-80 w-80 -translate-x-1/2 rounded-full bg-brand-200/40 blur-[110px]" />
+      </div>
+
+      <div className={`container-app relative py-12 ${accountData ? "max-w-xl" : "max-w-md"}`}>
+        <Link href="/" className="mb-8 flex flex-col items-center gap-2 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.png" alt="ZoriaBooking" className="h-10 w-10" />
+          <span className="text-sm font-semibold tracking-tight text-ink-900">
+            Zoria<span className="text-brand-600">Booking</span>
+          </span>
+        </Link>
+
         {accountData ? <CustomerAccountDashboard data={accountData} /> : <CustomerAuthForm />}
       </div>
     </main>
