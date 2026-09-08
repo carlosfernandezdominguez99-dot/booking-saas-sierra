@@ -17,8 +17,15 @@ export default async function MisCitasPage() {
 
   let accountData = null;
   if (token) {
-    const supabase = await createClient();
-    accountData = await getCustomerAccountData(supabase, token);
+    try {
+      const supabase = await createClient();
+      accountData = await getCustomerAccountData(supabase, token);
+    } catch {
+      // Si la consulta falla por lo que sea, se enseña el formulario de
+      // login/registro en vez de tirar toda la página abajo — igual que
+      // en `/negocio/[slug]/reservar` y `/lista-espera`.
+      accountData = null;
+    }
   }
 
   return (

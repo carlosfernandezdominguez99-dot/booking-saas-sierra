@@ -60,33 +60,43 @@ export function CustomerAuthForm({
     setError(null);
     setNotice(null);
     startTransition(async () => {
-      if (mode === "login") {
-        const res = await loginAction({ email, password });
-        if (res.error) {
-          if (res.accountNotFound) {
-            // Pedido explícito: si intenta entrar y no tiene cuenta, se le
-            // avisa y se pasa solo a la pestaña de registro (con el email
-            // ya puesto) en vez de dejarle un mensaje genérico de error.
-            setMode("signup");
-            setNotice("No tienes ninguna cuenta con ese email — regístrate abajo.");
+      // `try/catch` de última línea de defensa: `loginAction`/`signupAction`
+      // ya capturan sus propios errores y devuelven `{ error }`, pero si
+      // aun así algo se escapara (p. ej. un corte de red a mitad de la
+      // petición), esto evita que la excepción se cuele sin capturar dentro
+      // de la transición — eso es lo que hace que Next.js enseñe la
+      // pantalla genérica de error en vez de un mensaje normal aquí mismo.
+      try {
+        if (mode === "login") {
+          const res = await loginAction({ email, password });
+          if (res.error) {
+            if (res.accountNotFound) {
+              // Pedido explícito: si intenta entrar y no tiene cuenta, se le
+              // avisa y se pasa solo a la pestaña de registro (con el email
+              // ya puesto) en vez de dejarle un mensaje genérico de error.
+              setMode("signup");
+              setNotice("No tienes ninguna cuenta con ese email — regístrate abajo.");
+              return;
+            }
+            setError(res.error);
             return;
           }
+          goToDestination();
+          return;
+        }
+
+        const res = await signupAction({ email, password, name, phone });
+        if (res.error) {
           setError(res.error);
           return;
         }
+        // Éxito: la Server Action ya puso la cookie y revalidó la ruta, así
+        // que basta con recargar (o ir a `redirectTo`) para que se pinte el
+        // siguiente paso ya con sesión.
         goToDestination();
-        return;
+      } catch {
+        setError("Algo ha ido mal. Inténtalo de nuevo en unos segundos.");
       }
-
-      const res = await signupAction({ email, password, name, phone });
-      if (res.error) {
-        setError(res.error);
-        return;
-      }
-      // Éxito: la Server Action ya puso la cookie y revalidó la ruta, así
-      // que basta con recargar (o ir a `redirectTo`) para que se pinte el
-      // siguiente paso ya con sesión.
-      goToDestination();
     });
   }
 

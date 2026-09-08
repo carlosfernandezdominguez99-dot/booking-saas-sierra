@@ -18,46 +18,62 @@ export interface AuthActionResult {
   accountNotFound?: boolean;
 }
 
+/**
+ * Todas las acciones de aquí capturan cualquier error inesperado (RPC
+ * caída, columna que no cuadra, lo que sea) y lo devuelven como
+ * `{ error }` en vez de dejarlo escapar: un `throw` sin capturar dentro de
+ * una Server Action se convierte, del lado del cliente, en la pantalla
+ * genérica de Next.js ("Application error: a server-side exception..."),
+ * que no dice nada útil al cliente ni deja seguir usando el formulario.
+ */
 export async function signupAction(input: AuthActionInput): Promise<AuthActionResult> {
   if (!input.name || !input.phone) {
     return { error: "Introduce tu nombre y tu teléfono." };
   }
 
-  const supabase = await createClient();
-  const result = await customerSignup(supabase, {
-    email: input.email,
-    password: input.password,
-    name: input.name,
-    phone: input.phone,
-  });
+  try {
+    const supabase = await createClient();
+    const result = await customerSignup(supabase, {
+      email: input.email,
+      password: input.password,
+      name: input.name,
+      phone: input.phone,
+    });
 
-  if (result.error || !result.sessionToken) {
-    return { error: result.error ?? "No se pudo crear la cuenta." };
+    if (result.error || !result.sessionToken) {
+      return { error: result.error ?? "No se pudo crear la cuenta." };
+    }
+
+    await setCustomerSessionToken(result.sessionToken);
+    revalidatePath("/mis-citas");
+    return {};
+  } catch {
+    return { error: "No se pudo crear la cuenta. Inténtalo de nuevo en unos segundos." };
   }
-
-  await setCustomerSessionToken(result.sessionToken);
-  revalidatePath("/mis-citas");
-  return {};
 }
 
 export async function loginAction(input: AuthActionInput): Promise<AuthActionResult> {
-  const supabase = await createClient();
-  const result = await customerLogin(supabase, input.email, input.password);
+  try {
+    const supabase = await createClient();
+    const result = await customerLogin(supabase, input.email, input.password);
 
-  if (result.error || !result.sessionToken) {
-    return { error: result.error ?? "No se pudo iniciar sesión.", accountNotFound: result.accountNotFound };
+    if (result.error || !result.sessionToken) {
+      return { error: result.error ?? "No se pudo iniciar sesión.", accountNotFound: result.accountNotFound };
+    }
+
+    await setCustomerSessionToken(result.sessionToken);
+    revalidatePath("/mis-citas");
+    return {};
+  } catch {
+    return { error: "No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos." };
   }
-
-  await setCustomerSessionToken(result.sessionToken);
-  revalidatePath("/mis-citas");
-  return {};
 }
 
 export async function logoutAction(): Promise<void> {
   const token = await getCustomerSessionToken();
   if (token) {
-    const supabase = await createClient();
     try {
+      const supabase = await createClient();
       await customerLogout(supabase, token);
     } catch {
       // No-op: aunque falle borrar la fila en la base de datos, se borra
@@ -72,10 +88,14 @@ export async function leaveWaitlistAction(entryId: string): Promise<{ error?: st
   const token = await getCustomerSessionToken();
   if (!token) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
 
-  const supabase = await createClient();
-  const ok = await leaveWaitlistByAccount(supabase, token, entryId);
-  if (!ok) return { error: "No se pudo quitar de la lista de espera." };
+  try {
+    const supabase = await createClient();
+    const ok = await leaveWaitlistByAccount(supabase, token, entryId);
+    if (!ok) return { error: "No se pudo quitar de la lista de espera." };
 
-  revalidatePath("/mis-citas");
-  return {};
+    revalidatePath("/mis-citas");
+    return {};
+  } catch {
+    return { error: "No se pudo quitar de la lista de espera. Inténtalo de nuevo." };
+  }
 }
