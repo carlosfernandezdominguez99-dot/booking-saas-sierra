@@ -92,6 +92,7 @@ export interface AccountBusinessData {
   businessName: string;
   businessSlug: string;
   businessTimezone: string;
+  businessLogoUrl: string | null;
   upcomingBookings: AccountBooking[];
   pastBookings: AccountBooking[];
   waitlistEntries: AccountWaitlistEntry[];
@@ -153,6 +154,7 @@ export async function getCustomerAccountData(
     businessName: b.business_name,
     businessSlug: b.business_slug,
     businessTimezone: b.business_timezone,
+    businessLogoUrl: b.business_logo_url ?? null,
     upcomingBookings: (b.upcoming_bookings ?? []).map(mapBookingRow),
     pastBookings: (b.past_bookings ?? []).map(mapBookingRow),
     waitlistEntries: (b.waitlist_entries ?? []).map(mapWaitlistRow),

@@ -43,3 +43,26 @@ export async function getPublicBusinessBySlug(
 
   return { business, services: services ?? [] };
 }
+
+export type PartnerBusiness = Pick<Database["public"]["Tables"]["businesses"]["Row"], "id" | "name" | "slug" | "logo_url">;
+
+/**
+ * Negocios reales que ya usan la app, para la sección "Negocios que ya
+ * confían en nosotros" de la landing (`/`) — hasta `limit` (por defecto
+ * 5), los más antiguos primero. Solo negocios que terminaron el
+ * onboarding (si no, mostraría altas a medias sin servicios ni nada que
+ * enseñar) — RLS ya limita la lectura pública a `subscription_status in
+ * ('trial', 'active')`, así que no hace falta repetirlo aquí.
+ */
+export async function getPartnerBusinesses(limit = 5): Promise<PartnerBusiness[]> {
+  const supabase = await createClient();
+
+  const { data } = (await supabase
+    .from("businesses")
+    .select("id, name, slug, logo_url")
+    .not("onboarding_completed_at", "is", null)
+    .order("onboarding_completed_at", { ascending: true })
+    .limit(limit)) as unknown as { data: PartnerBusiness[] | null };
+
+  return data ?? [];
+}

@@ -656,6 +656,37 @@ todas formas porque ese caso no llega a llamar a `crypt()`.
 
 ---
 
+## ✅ Fase 7.6 — Negocios en la landing + pestaña "Negocios" en Mis citas
+
+Pedido explícito de Carlos: en la página de inicio (`/`), enseñar los
+negocios que ya usan la app (hasta 5, con logo y enlace a su página); y en
+`/mis-citas`, un punto de menú "Negocios" para ver de un vistazo (y entrar
+a) cada negocio donde el cliente ya ha reservado o se ha apuntado a lista
+de espera antes.
+
+**Implementado:**
+
+- `supabase/migrations/0016_account_business_logo.sql` (nueva, **hay que
+  ejecutarla en el SQL Editor**, después de `0015`) — añade el logo del
+  negocio a lo que ya devolvía `get_customer_account_data` (no cambia
+  nada más).
+- `/` (landing) — sección nueva "Negocios que ya confían en nosotros":
+  hasta 5 negocios reales (los que ya terminaron el onboarding), con su
+  logo (o inicial si no tienen) y enlace a `/negocio/su-slug`. Se rellena
+  sola según se vayan dando de alta negocios — con los 2 que hay ahora
+  mismo, solo se ven esos 2; en cuanto haya un tercero, cuarto o quinto
+  aparecen automáticamente, y a partir del sexto deja de crecer (se queda
+  siempre en los 5 más antiguos).
+- `/mis-citas` — nueva pestaña "Negocios" junto a Inicio/Próximas/Pasadas:
+  una tarjeta por cada negocio con el que el cliente ya ha interactuado
+  (logo, nombre, cuántas citas), que lleva a la página pública de ese
+  negocio al pulsarla.
+
+**⚠️ Antes de dar esto por bueno:** ejecuta
+`0016_account_business_logo.sql` en el SQL Editor de Supabase.
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 9 — Testing + seguridad + revisión final

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { leaveWaitlistAction, logoutAction } from "@/app/mis-citas/actions";
@@ -10,7 +11,7 @@ import type {
   CustomerAccountData,
 } from "@/lib/services/customerAccountService";
 
-type Tab = "inicio" | "proximas" | "pasadas";
+type Tab = "inicio" | "proximas" | "pasadas" | "negocios";
 
 const BOOKING_STATUS_LABELS: Record<AccountBooking["status"], { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-amber-100 text-amber-700" },
@@ -148,18 +149,18 @@ export function CustomerAccountDashboard({ data }: { data: CustomerAccountData }
         </button>
       </div>
 
-      <div className="flex gap-2 border-b border-ink-100">
-        {(["inicio", "proximas", "pasadas"] as Tab[]).map((t) => (
+      <div className="flex gap-2 overflow-x-auto border-b border-ink-100">
+        {(["inicio", "proximas", "pasadas", "negocios"] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
               tab === t ? "border-ink-900 text-ink-900" : "border-transparent text-ink-400 hover:text-ink-600",
             )}
           >
-            {t === "inicio" ? "Inicio" : t === "proximas" ? "Próximas" : "Pasadas"}
+            {t === "inicio" ? "Inicio" : t === "proximas" ? "Próximas" : t === "pasadas" ? "Pasadas" : "Negocios"}
           </button>
         ))}
       </div>
@@ -251,6 +252,42 @@ export function CustomerAccountDashboard({ data }: { data: CustomerAccountData }
           ) : (
             past.map((booking) => <BookingRow key={`${booking.businessName}-${booking.id}`} booking={booking} />)
           )}
+        </div>
+      )}
+
+      {tab === "negocios" && data.businesses.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {data.businesses.map((business) => {
+            const totalCitas = business.upcomingBookings.length + business.pastBookings.length;
+            return (
+              <Link
+                key={business.businessId}
+                href={`/negocio/${business.businessSlug}`}
+                className="block"
+              >
+                <Card className="flex items-center gap-3 transition-colors hover:border-ink-300">
+                  {business.businessLogoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={business.businessLogoUrl}
+                      alt={business.businessName}
+                      className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-semibold text-white">
+                      {business.businessName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink-900">{business.businessName}</p>
+                    <p className="text-xs text-ink-400">
+                      {totalCitas > 0 ? `${totalCitas} cita${totalCitas === 1 ? "" : "s"}` : "Sin citas todavía"}
+                    </p>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

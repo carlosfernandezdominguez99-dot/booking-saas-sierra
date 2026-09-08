@@ -5,6 +5,7 @@ import { MarketingHeader } from "@/components/marketing/Header";
 import { MarketingFooter } from "@/components/marketing/Footer";
 import { Section, SectionHeading } from "@/components/marketing/Section";
 import { Reveal } from "@/components/marketing/Reveal";
+import { getPartnerBusinesses } from "@/lib/services/publicBusinessService";
 
 const FEATURES = [
   {
@@ -86,7 +87,9 @@ const FAQS = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const partnerBusinesses = await getPartnerBusinesses(5);
+
   return (
     <div className="dark bg-ink-950">
       <MarketingHeader />
@@ -299,6 +302,42 @@ export default function LandingPage() {
             </Reveal>
           </div>
         </Section>
+
+        {/* Negocios que ya confían en nosotros */}
+        {partnerBusinesses.length > 0 && (
+          <Section className="border-t border-white/10">
+            <Reveal>
+              <SectionHeading eyebrow="Negocios" title="Negocios que ya confían en nosotros" />
+            </Reveal>
+            <Reveal delay={100}>
+              <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-4">
+                {partnerBusinesses.map((business) => (
+                  <Link
+                    key={business.id}
+                    href={`/negocio/${business.slug}`}
+                    className="group flex w-40 flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-brand-500/30"
+                  >
+                    {business.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={business.logo_url}
+                        alt={business.name}
+                        className="h-14 w-14 rounded-2xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-lg font-semibold text-ink-950">
+                        {business.name.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <p className="truncate text-sm font-medium text-white/80 group-hover:text-white">
+                      {business.name}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </Reveal>
+          </Section>
+        )}
 
         {/* Testimonios */}
         <Section className="border-t border-white/10 bg-white/[0.02]">
