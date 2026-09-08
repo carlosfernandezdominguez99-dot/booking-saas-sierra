@@ -664,6 +664,31 @@ export interface Database {
         };
         Returns: { entry_id: string | null; error: string | null }[];
       };
+      cancel_booking_by_account: {
+        Args: { p_token: string; p_booking_id: string };
+        Returns: {
+          ok: boolean;
+          error: string | null;
+          business_id: string | null;
+          business_slug: string | null;
+          business_name: string | null;
+          business_timezone: string | null;
+          service_name: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          customer_name: string | null;
+          customer_email: string | null;
+          customer_phone: string | null;
+          next_entry_id: string | null;
+          next_customer_name: string | null;
+          next_customer_phone: string | null;
+          next_customer_email: string | null;
+          next_service_name: string | null;
+          next_offered_start_time: string | null;
+          next_offered_end_time: string | null;
+          next_respond_token: string | null;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

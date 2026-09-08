@@ -71,6 +71,7 @@ export async function customerLogout(client: TypedClient, token: string): Promis
 
 export interface AccountBooking {
   id: string;
+  serviceId: string;
   serviceName: string;
   startTime: string;
   endTime: string;
@@ -93,6 +94,9 @@ export interface AccountBusinessData {
   businessSlug: string;
   businessTimezone: string;
   businessLogoUrl: string | null;
+  /** Política de cancelación del negocio (`booking_settings`) — para saber cuándo enseñar "Cancelar"/"Modificar". */
+  allowCancellation: boolean;
+  minCancellationHours: number;
   upcomingBookings: AccountBooking[];
   pastBookings: AccountBooking[];
   waitlistEntries: AccountWaitlistEntry[];
@@ -107,6 +111,7 @@ export interface CustomerAccountData {
 function mapBookingRow(row: any): AccountBooking {
   return {
     id: row.id,
+    serviceId: row.service_id,
     serviceName: row.service_name,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -155,6 +160,8 @@ export async function getCustomerAccountData(
     businessSlug: b.business_slug,
     businessTimezone: b.business_timezone,
     businessLogoUrl: b.business_logo_url ?? null,
+    allowCancellation: b.allow_cancellation ?? true,
+    minCancellationHours: b.min_cancellation_hours ?? 0,
     upcomingBookings: (b.upcoming_bookings ?? []).map(mapBookingRow),
     pastBookings: (b.past_bookings ?? []).map(mapBookingRow),
     waitlistEntries: (b.waitlist_entries ?? []).map(mapWaitlistRow),
@@ -299,4 +306,115 @@ export async function joinWaitlistByAccount(
   if (!row) return { error: "No se pudo apuntar a la lista de espera." };
   if (row.error) return { error: row.error };
   return { entryId: row.entry_id ?? undefined };
+}
+
+export interface CancelBookingByAccountOffer {
+  entryId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  serviceName: string;
+  offeredStartTime: string;
+  offeredEndTime: string;
+  respondToken: string;
+}
+
+export interface CancelBookingByAccountResult {
+  ok: boolean;
+  error?: string;
+  businessName?: string;
+  businessTimezone?: string;
+  serviceName?: string;
+  startTime?: string;
+  endTime?: string;
+  customerName?: string;
+  customerEmail?: string | null;
+  /** Si al cancelar había alguien esperando ese hueco, aquí va su oferta (para avisarle). */
+  nextOffer?: CancelBookingByAccountOffer;
+}
+
+/**
+ * Envuelve `cancel_booking_by_account`: cancela una cita del propio
+ * cliente, respetando la política de cancelación de ESE negocio
+ * (`allow_cancellation`/`min_cancellation_hours` — la base de datos
+ * revalida esto siempre, nunca se confía en lo que haya calculado el
+ * cliente). Si se libera un hueco que encaja con alguien en lista de
+ * espera, se lo ofrece automáticamente (mismo comportamiento que cuando
+ * cancela el propio negocio desde su panel) y lo devuelve en `nextOffer`
+ * para que quien llame pueda avisarle.
+ */
+export async function cancelBookingByAccount(
+  client: TypedClient,
+  token: string,
+  bookingId: string,
+): Promise<CancelBookingByAccountResult> {
+  const { data, error } = (await (client.rpc as any)("cancel_booking_by_account", {
+    p_token: token,
+    p_booking_id: bookingId,
+  })) as unknown as {
+    data:
+      | {
+          ok: boolean;
+          error: string | null;
+          business_id: string | null;
+          business_slug: string | null;
+          business_name: string | null;
+          business_timezone: string | null;
+          service_name: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          customer_name: string | null;
+          customer_email: string | null;
+          customer_phone: string | null;
+          next_entry_id: string | null;
+          next_customer_name: string | null;
+          next_customer_phone: string | null;
+          next_customer_email: string | null;
+          next_service_name: string | null;
+          next_offered_start_time: string | null;
+          next_offered_end_time: string | null;
+          next_respond_token: string | null;
+        }[]
+      | null;
+    error: { message: string } | null;
+  };
+  if (error) throw error;
+
+  const row = data?.[0];
+  if (!row) return { ok: false, error: "No se pudo cancelar la reserva." };
+  if (!row.ok) return { ok: false, error: row.error ?? "No se pudo cancelar la reserva." };
+
+  const result: CancelBookingByAccountResult = {
+    ok: true,
+    businessName: row.business_name ?? undefined,
+    businessTimezone: row.business_timezone ?? undefined,
+    serviceName: row.service_name ?? undefined,
+    startTime: row.start_time ?? undefined,
+    endTime: row.end_time ?? undefined,
+    customerName: row.customer_name ?? undefined,
+    customerEmail: row.customer_email,
+  };
+
+  if (
+    row.next_entry_id &&
+    row.next_customer_name &&
+    row.next_customer_phone &&
+    row.next_service_name &&
+    row.next_offered_start_time &&
+    row.next_offered_end_time &&
+    row.next_respond_token
+  ) {
+    result.nextOffer = {
+      entryId: row.next_entry_id,
+      customerName: row.next_customer_name,
+      customerPhone: row.next_customer_phone,
+      customerEmail: row.next_customer_email,
+      serviceName: row.next_service_name,
+      offeredStartTime: row.next_offered_start_time,
+      offeredEndTime: row.next_offered_end_time,
+      respondToken: row.next_respond_token,
+    };
+  }
+
+  return result;
 }

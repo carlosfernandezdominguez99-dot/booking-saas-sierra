@@ -3,7 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomerSessionToken, setCustomerSessionToken, clearCustomerSessionToken } from "@/lib/services/customerAuthSession";
-import { customerSignup, customerLogin, customerLogout, leaveWaitlistByAccount } from "@/lib/services/customerAccountService";
+import {
+  customerSignup,
+  customerLogin,
+  customerLogout,
+  leaveWaitlistByAccount,
+  cancelBookingByAccount,
+} from "@/lib/services/customerAccountService";
+import { sendCancellationEmail, sendWaitlistOfferEmail } from "@/lib/email/emailService";
+import { sendWaitlistOffer } from "@/lib/whatsapp/whatsappService";
 
 export interface AuthActionInput {
   email: string;
@@ -97,5 +105,78 @@ export async function leaveWaitlistAction(entryId: string): Promise<{ error?: st
     return {};
   } catch {
     return { error: "No se pudo quitar de la lista de espera. Inténtalo de nuevo." };
+  }
+}
+
+/**
+ * Cancela una cita desde "Mis citas". La base de datos (`cancel_booking_by_account`)
+ * es quien de verdad decide si se puede (política de cancelación de ESE
+ * negocio) — aquí solo se envían los avisos según lo que ella devuelva.
+ */
+export async function cancelBookingAction(bookingId: string): Promise<{ error?: string }> {
+  const token = await getCustomerSessionToken();
+  if (!token) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
+
+  try {
+    const supabase = await createClient();
+    const result = await cancelBookingByAccount(supabase, token, bookingId);
+    if (!result.ok) return { error: result.error ?? "No se pudo cancelar la reserva." };
+
+    // Aviso de cancelación al propio cliente — best-effort a propósito
+    // (mismo motivo que en el resto de acciones: la cancelación ya se
+    // hizo, un fallo aquí no debe deshacerla ni mostrarse como error).
+    if (result.customerEmail && result.businessName && result.serviceName && result.startTime && result.businessTimezone) {
+      try {
+        await sendCancellationEmail({
+          toEmail: result.customerEmail,
+          customerName: result.customerName ?? "",
+          businessName: result.businessName,
+          serviceName: result.serviceName,
+          startTimeIso: result.startTime,
+          timezone: result.businessTimezone,
+        });
+      } catch {
+        // No-op: best-effort.
+      }
+    }
+
+    // Igual que cuando cancela el propio negocio: si se liberó un hueco
+    // que encajaba con alguien en lista de espera, se le avisa.
+    if (result.nextOffer && result.businessName && result.businessTimezone) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+      const respondUrl = `${siteUrl}/lista-espera/${result.nextOffer.respondToken}`;
+      try {
+        await sendWaitlistOffer({
+          toPhone: result.nextOffer.customerPhone,
+          customerName: result.nextOffer.customerName,
+          businessName: result.businessName,
+          serviceName: result.nextOffer.serviceName,
+          startTimeIso: result.nextOffer.offeredStartTime,
+          respondUrl,
+        });
+      } catch {
+        // No-op: best-effort.
+      }
+      if (result.nextOffer.customerEmail) {
+        try {
+          await sendWaitlistOfferEmail({
+            toEmail: result.nextOffer.customerEmail,
+            customerName: result.nextOffer.customerName,
+            businessName: result.businessName,
+            serviceName: result.nextOffer.serviceName,
+            startTimeIso: result.nextOffer.offeredStartTime,
+            timezone: result.businessTimezone,
+            respondUrl,
+          });
+        } catch {
+          // No-op: best-effort.
+        }
+      }
+    }
+
+    revalidatePath("/mis-citas");
+    return {};
+  } catch {
+    return { error: "No se pudo cancelar la reserva. Inténtalo de nuevo." };
   }
 }

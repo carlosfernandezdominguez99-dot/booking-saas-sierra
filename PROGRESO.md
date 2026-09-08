@@ -687,6 +687,59 @@ de espera antes.
 
 ---
 
+## ✅ Fase 7.7 — Cancelar/modificar cita desde "Mis citas" + mejoras varias
+
+Pedido explícito de Carlos, en varios mensajes seguidos:
+
+- Quitar las flechitas subir/bajar de los campos numéricos (widget que
+  "sobraba" en pantalla).
+- En `/negocio/[slug]`, si el cliente ya tiene sesión iniciada, el enlace
+  de abajo debe decir solo "Ver mis citas" (no "¿Ya reservaste antes?").
+- Mejorar el diseño del perfil de cliente ("se ve sosa la página").
+- En "Tu próxima cita" debe poder **cancelar o modificar** la reserva —
+  pero NO con un plazo fijo de 24h (primera idea descartada por Carlos:
+  "bueno lo de las 24h no"). En su lugar se usa la política que cada
+  negocio ya tiene configurada en sus ajustes (`Ajustes → Reservas`):
+  si permite cancelaciones y con cuántas horas de antelación como mínimo
+  — ese ajuste ya existía pero hasta ahora no se aplicaba a nada.
+
+**Implementado:**
+
+- `src/app/globals.css` — reglas para ocultar las flechas nativas de
+  `<input type="number">` en todo el sitio.
+- `src/app/negocio/[slug]/page.tsx` — el enlace final muestra "Ver mis
+  citas" si hay sesión de cliente iniciada, o el texto largo si no.
+- `src/components/public/CustomerAccountDashboard.tsx` — rediseño de la
+  cabecera (avatar con inicial, resumen con próximas citas/negocios/lista
+  de espera) y de las pestañas (mismo estilo "píldora" que el
+  login/registro); tarjeta de "Tu próxima cita" resaltada.
+- `src/app/mis-citas/page.tsx` — cabecera con el logo/nombre de
+  ZoriaBooking (enlaza a `/`) encima del panel.
+- **Cancelar/modificar reserva** (lo importante de esta fase):
+  - `supabase/migrations/0017_customer_cancel_booking.sql` (nueva, **hay
+    que ejecutarla en el SQL Editor**, después de `0016`) — añade una
+    función `cancel_booking_by_account`: el propio cliente puede cancelar
+    una cita suya, pero la base de datos siempre vuelve a comprobar la
+    política de cancelación de ESE negocio (si permite cancelar, y con
+    cuántas horas mínimo de antelación) antes de dejarlo. Si al cancelar
+    se libera un hueco que encaja con alguien en lista de espera, se le
+    avisa automáticamente (igual que cuando cancela el propio negocio
+    desde su panel). También amplía `get_customer_account_data` para que
+    el frontend sepa, por cada negocio, si permite cancelar y con cuánta
+    antelación, sin tener que preguntarlo aparte.
+  - En "Mis citas" (pestaña Inicio y pestaña Próximas), cada cita próxima
+    que se pueda gestionar enseña dos botones: **Modificar** (lleva a la
+    página de reservar de ese negocio, con el mismo servicio ya
+    preseleccionado) y **Cancelar** (pide confirmación, y si el negocio
+    lo permite a esas horas, cancela al momento). Las citas pasadas no
+    llevan estos botones.
+
+**⚠️ Antes de dar esto por bueno:** ejecuta
+`0017_customer_cancel_booking.sql` en el SQL Editor de Supabase (después
+de `0016`).
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 9 — Testing + seguridad + revisión final
