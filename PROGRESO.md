@@ -634,6 +634,28 @@ explícito tuyo.
 
 ---
 
+## 🐛 Arreglo — registrarse (y comprobar contraseña) fallaba siempre
+
+Al probar la Fase 7.4, crear una cuenta de cliente daba siempre "No se
+pudo crear la cuenta" (antes de blindar los errores, directamente la
+pantalla en blanco de Next.js). Causa real: `crypt()`/`gen_salt()` (con
+las que `customer_signup`/`customer_login` cifran y comprueban la
+contraseña) viven en el esquema `extensions` de Supabase, no en `public`
+— y esas dos funciones tenían `search_path = public` a secas, así que
+Postgres no las encontraba. El login "email sin cuenta" funcionaba de
+todas formas porque ese caso no llega a llamar a `crypt()`.
+
+- `supabase/migrations/0015_fix_pgcrypto_search_path.sql` (nueva, **hay
+  que ejecutarla en el SQL Editor**, después de `0014`) — vuelve a crear
+  `customer_signup` y `customer_login` añadiendo `extensions` al
+  `search_path`. No cambia nada más (mismos parámetros, misma forma de
+  respuesta).
+- También se aprovechó para que `signupAction`/`loginAction` y la carga de
+  `/mis-citas` capturen cualquier error inesperado de la base de datos y
+  enseñen un mensaje normal en vez de dejar que rompa toda la página.
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 9 — Testing + seguridad + revisión final
