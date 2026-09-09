@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { getDashboardScope } from "@/lib/services/employeeScope";
 import { listBookingsWithDetails } from "@/lib/services/bookingService";
 import { BookingsList } from "@/components/dashboard/BookingsList";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -9,7 +10,11 @@ import { zonedMidnightToUtcIso, addDaysToDateString, todayInTimezone } from "@/l
 // aquí en Inicio solo interesa "qué tengo que hacer/mirar hoy", para no
 // repetir información y dejar sitio de sobra al botón de crear cita.
 export default async function DashboardInicioPage() {
-  const { supabase, business } = await requireBusinessContext();
+  const { supabase, business, role, employeeId } = await requireBusinessContext();
+
+  // Fase 10: las citas de hoy también respetan el círculo seleccionado
+  // arriba del panel.
+  const { employeeFilter } = await getDashboardScope(supabase, business, role, employeeId);
 
   const today = todayInTimezone(business.timezone);
   const startOfTodayIso = zonedMidnightToUtcIso(today, business.timezone);
@@ -21,6 +26,7 @@ export default async function DashboardInicioPage() {
     to: endOfTodayIso,
     statuses: ["pending", "confirmed", "completed", "no_show"],
     order: "asc",
+    employeeId: employeeFilter,
   });
 
   return (

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/utils/cn";
+import { EmployeePhotoUploader } from "@/components/dashboard/EmployeePhotoUploader";
 import type { Database, EmployeeInviteStatus } from "@/types/database.types";
 import {
   createEmployeeAction,
@@ -173,9 +174,18 @@ export function EmployeesManager({
                     onClick={() => setExpandedId(isExpanded ? null : employee.id)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-sm font-semibold text-white">
-                      {employee.name.slice(0, 1).toUpperCase()}
-                    </div>
+                    {employee.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={employee.photo_url}
+                        alt={employee.name}
+                        className="h-9 w-9 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-sm font-semibold text-white">
+                        {employee.name.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-ink-900">{employee.name}</p>
                       <p className="text-xs text-ink-400">
@@ -219,6 +229,15 @@ export function EmployeesManager({
 
                 {isExpanded && (
                   <div className="mt-4 space-y-4 border-t border-ink-100 pt-4">
+                    <div>
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-400">Foto</p>
+                      <EmployeePhotoUploader
+                        employeeId={employee.id}
+                        employeeName={employee.name}
+                        initialPhotoUrl={employee.photo_url}
+                      />
+                    </div>
+
                     <div>
                       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-400">
                         Servicios que realiza

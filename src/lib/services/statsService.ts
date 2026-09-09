@@ -93,11 +93,23 @@ function average(values: number[]): number {
  * pequeño (peluquería, academia, etc.) el volumen de filas es manejable; si
  * en el futuro hiciera falta paginar, este es el sitio a revisar primero.
  */
-export async function getBusinessStats(client: TypedClient, businessId: string, timezone: string): Promise<BusinessStats> {
-  const [bookings, customers] = await Promise.all([
-    listBookingsWithDetails(client, { businessId }),
-    listCustomers(client, businessId),
-  ]);
+export async function getBusinessStats(
+  client: TypedClient,
+  businessId: string,
+  timezone: string,
+  /** Fase 10: "de quién" son estas estadísticas — ver `employeeScope.ts`. `undefined` = todo el negocio. */
+  employeeId?: string | null,
+): Promise<BusinessStats> {
+  const bookings = await listBookingsWithDetails(client, { businessId, employeeId });
+
+  // Con el negocio entero (sin filtrar) el nº de clientes es el de la
+  // tabla `customers` tal cual; filtrado a un empleado/gerente en
+  // concreto, "sus clientes" son los que aparecen en SUS reservas, no la
+  // lista completa del negocio.
+  const totalCustomers =
+    employeeId !== undefined
+      ? new Set(bookings.map((b) => b.customerId)).size
+      : (await listCustomers(client, businessId)).length;
 
   const activeBookings = bookings.filter((b) => b.status !== "cancelled");
   const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
@@ -208,7 +220,7 @@ export async function getBusinessStats(client: TypedClient, businessId: string, 
   }));
 
   return {
-    totalCustomers: customers.length,
+    totalCustomers,
     totalBookings: activeBookings.length,
     cancelledBookings: cancelledBookings.length,
     cancellationRatePct: Math.round(cancellationRatePct * 10) / 10,

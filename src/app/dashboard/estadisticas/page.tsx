@@ -1,4 +1,5 @@
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { getDashboardScope } from "@/lib/services/employeeScope";
 import { getBusinessStats } from "@/lib/services/statsService";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 
@@ -12,8 +13,11 @@ function formatDays(days: number): string {
 }
 
 export default async function EstadisticasPage() {
-  const { supabase, business } = await requireBusinessContext();
-  const stats = await getBusinessStats(supabase, business.id, business.timezone);
+  const { supabase, business, role, employeeId } = await requireBusinessContext();
+  // Fase 10: filtradas a quien esté seleccionado arriba del panel.
+  const { scope, employeeFilter } = await getDashboardScope(supabase, business, role, employeeId);
+  const stats = await getBusinessStats(supabase, business.id, business.timezone, employeeFilter);
+  const scopeLabel = scope.kind === "employee" ? scope.employeeName : scope.kind === "manager" ? "tuyas" : null;
 
   const kpis = [
     { label: "Clientes totales", value: stats.totalCustomers.toString() },
@@ -30,7 +34,9 @@ export default async function EstadisticasPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink-950">Estadísticas</h1>
-        <p className="mt-1 text-sm text-ink-500">Cómo va tu negocio, de un vistazo.</p>
+        <p className="mt-1 text-sm text-ink-500">
+          {scopeLabel === "tuyas" ? "Cómo van tus citas, de un vistazo." : scopeLabel ? `Cómo van las citas de ${scopeLabel}, de un vistazo.` : "Cómo va tu negocio, de un vistazo."}
+        </p>
       </div>
 
       {!hasAnyBooking ? (

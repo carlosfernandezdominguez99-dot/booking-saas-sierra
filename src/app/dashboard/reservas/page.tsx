@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { getDashboardScope } from "@/lib/services/employeeScope";
 import { listBookingsWithDetails, type ListBookingsParams } from "@/lib/services/bookingService";
 import { BookingsList } from "@/components/dashboard/BookingsList";
 import { Card } from "@/components/ui/Card";
@@ -14,8 +15,12 @@ const VIEWS = [
 type ViewKey = (typeof VIEWS)[number]["key"];
 
 export default async function ReservasPage({ searchParams }: { searchParams: { view?: string } }) {
-  const { supabase, business } = await requireBusinessContext();
+  const { supabase, business, role, employeeId } = await requireBusinessContext();
   const view: ViewKey = (VIEWS.some((v) => v.key === searchParams.view) ? searchParams.view : "upcoming") as ViewKey;
+
+  // Fase 10: de quién son estas reservas lo decide el selector de arriba
+  // del panel (cookie) — ver `employeeScope.ts`.
+  const { employeeFilter } = await getDashboardScope(supabase, business, role, employeeId);
 
   const nowIso = new Date().toISOString();
 
@@ -32,11 +37,18 @@ export default async function ReservasPage({ searchParams }: { searchParams: { v
       to: nowIso,
       statuses: ["pending", "confirmed", "completed", "no_show"],
       order: "desc",
+      employeeId: employeeFilter,
     };
   } else if (view === "cancelled") {
-    filters = { businessId: business.id, statuses: ["cancelled"], order: "desc" };
+    filters = { businessId: business.id, statuses: ["cancelled"], order: "desc", employeeId: employeeFilter };
   } else {
-    filters = { businessId: business.id, from: nowIso, statuses: ["pending", "confirmed"], order: "asc" };
+    filters = {
+      businessId: business.id,
+      from: nowIso,
+      statuses: ["pending", "confirmed"],
+      order: "asc",
+      employeeId: employeeFilter,
+    };
   }
 
   const bookings = await listBookingsWithDetails(supabase, filters);

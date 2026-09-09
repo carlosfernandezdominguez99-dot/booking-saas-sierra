@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
+import { getDashboardScope } from "@/lib/services/employeeScope";
 import { listBookingsWithDetails, type BookingWithDetails } from "@/lib/services/bookingService";
-import { listEmployees } from "@/lib/services/employeesService";
 import { BookingsList } from "@/components/dashboard/BookingsList";
 import { CalendarPicker } from "@/components/dashboard/CalendarPicker";
 import { Card } from "@/components/ui/Card";
@@ -33,25 +33,21 @@ function formatTime(iso: string, timezone: string): string {
 export default async function CalendarioPage({
   searchParams,
 }: {
-  searchParams: { date?: string; view?: string; empleado?: string };
+  searchParams: { date?: string; view?: string };
 }) {
-  const { supabase, business } = await requireBusinessContext();
+  const { supabase, business, role, employeeId } = await requireBusinessContext();
   const timezone = business.timezone;
 
   const today = todayInTimezone(timezone);
   const date = searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : today;
   const view: ViewKey = VIEWS.some((v) => v.key === searchParams.view) ? (searchParams.view as ViewKey) : "day";
 
-  // Fase 9.2: filtro "de quién" es la agenda — sin parámetro, todas
-  // (dueño viendo el conjunto); "yo" es solo la del gerente (employee_id
-  // null); un id concreto es solo ese empleado. `undefined` en
-  // `listBookingsWithDetails` significa "sin filtrar", así que se deja
-  // así tal cual para el caso "todos".
-  const employees = await listEmployees(supabase, business.id);
-  const employeeFilter: string | null | undefined =
-    searchParams.empleado === "yo" ? null : searchParams.empleado || undefined;
-  const employeeParam =
-    employeeFilter === undefined ? "" : `&empleado=${employeeFilter === null ? "yo" : employeeFilter}`;
+  // Fase 10: de quién es esta agenda lo decide ya el selector de círculos
+  // de arriba del panel (cookie), no un parámetro propio de esta página —
+  // ver `employeeScope.ts`. `undefined` en `listBookingsWithDetails`
+  // significa "sin filtrar" (caso "Todos").
+  const { employeeFilter } = await getDashboardScope(supabase, business, role, employeeId);
+  const employeeParam = "";
 
   // Rango a consultar y datos para la cabecera, según la vista activa.
   let rangeFrom: string;
@@ -131,41 +127,6 @@ export default async function CalendarioPage({
         <h1 className="text-2xl font-semibold tracking-tight text-ink-950">Calendario</h1>
         <CalendarPicker selectedDate={date} todayStr={today} />
       </div>
-
-      {employees.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/dashboard/calendario?view=${view}&date=${date}`}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              employeeFilter === undefined ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
-            )}
-          >
-            Todos
-          </Link>
-          <Link
-            href={`/dashboard/calendario?view=${view}&date=${date}&empleado=yo`}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              employeeFilter === null ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
-            )}
-          >
-            Tú
-          </Link>
-          {employees.map((employee) => (
-            <Link
-              key={employee.id}
-              href={`/dashboard/calendario?view=${view}&date=${date}&empleado=${employee.id}`}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                employeeFilter === employee.id ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
-              )}
-            >
-              {employee.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">

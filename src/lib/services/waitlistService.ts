@@ -116,6 +116,14 @@ export interface ListWaitlistParams {
   /** Filtra por un día concreto (YYYY-MM-DD). Si no se da, trae todos. */
   date?: string;
   statuses?: WaitlistStatus[];
+  /**
+   * Fase 10: filtra a los servicios de un empleado en concreto (para
+   * cuando el panel esté "puesto" en él vía el selector de arriba) — una
+   * entrada de lista de espera no lleva empleado asignado hasta que se le
+   * ofrece un hueco, así que aquí se aproxima por "espera un servicio que
+   * él hace". Si no se da, trae todas.
+   */
+  serviceIds?: string[];
 }
 
 /**
@@ -135,6 +143,7 @@ export async function listWaitlist(
 
   if (params.date) query = query.eq("preferred_date", params.date);
   if (params.statuses && params.statuses.length > 0) query = query.in("status", params.statuses);
+  if (params.serviceIds) query = query.in("service_id", params.serviceIds);
 
   const { data: entries, error } = (await query.order("created_at", { ascending: true })) as unknown as {
     data: WaitlistRow[] | null;
