@@ -6,8 +6,15 @@ import { z } from "zod";
 // -----------------------------------------------------------------------
 export const businessProfileSchema = z.object({
   description: z.string().trim().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
-  address: z.string().trim().max(200).optional().or(z.literal("")),
+  // Obligatoria (Fase 9.1): hace falta para poder ofrecer el botón "Cómo
+  // llegar" en la confirmación de la cita y en el email — sin dirección no
+  // hay a dónde enlazar.
+  address: z.string().trim().min(1, "Introduce la dirección del negocio").max(200),
   city: z.string().trim().max(100).optional().or(z.literal("")),
+  // Fase 9.2: nombre con el que el gerente aparece ante el cliente cuando
+  // "reserva con él" (p. ej. junto a los empleados reales en "¿con
+  // quién?") — obligatorio porque siempre se enseña en algún sitio.
+  managerDisplayName: z.string().trim().min(1, "Introduce el nombre del encargado").max(80),
 });
 export type BusinessProfileInput = z.infer<typeof businessProfileSchema>;
 

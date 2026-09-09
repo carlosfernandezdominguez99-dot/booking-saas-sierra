@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusinessContext } from "@/lib/services/authContext";
 import { hoursRowsToWeekly, listBusinessHours } from "@/lib/services/hoursService";
+import { listEmployees } from "@/lib/services/employeesService";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
+import { EmployeeAgendaTabs } from "@/components/dashboard/EmployeeAgendaTabs";
 
 interface PageProps {
   params: { employeeId: string };
@@ -26,6 +28,7 @@ export default async function EmployeeHorarioPage({ params }: PageProps) {
 
   const rows = await listBusinessHours(supabase, business.id, employee.id);
   const weeklyHours = hoursRowsToWeekly(rows);
+  const employees = await listEmployees(supabase, business.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -35,6 +38,13 @@ export default async function EmployeeHorarioPage({ params }: PageProps) {
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink-950">Horario de {employee.name}</h1>
       </div>
+
+      <EmployeeAgendaTabs
+        employees={employees}
+        activeEmployeeId={employee.id}
+        managerHref="/dashboard/horarios"
+        basePathForEmployee={(id) => `/dashboard/empleados/${id}/horario`}
+      />
 
       <Card>
         <CardTitle>Franjas de trabajo</CardTitle>

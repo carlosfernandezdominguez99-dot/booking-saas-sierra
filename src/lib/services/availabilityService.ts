@@ -58,29 +58,37 @@ export async function getAvailableSlots(
 }
 
 export interface AvailableSlotWithEmployee extends AvailableSlot {
-  /** Qué empleado concreto ofrece este hueco — el que se reserva de verdad si se elige. */
-  employeeId: string;
+  /**
+   * Qué empleado concreto ofrece este hueco — el que se reserva de verdad
+   * si se elige. `undefined` significa el propio gerente (Fase 9.2):
+   * "sin empleado" sigue siendo un candidato más, no solo lo que queda
+   * cuando no hay ninguno de verdad.
+   */
+  employeeId?: string;
 }
 
 /**
- * "Cualquiera disponible": pide los huecos de CADA empleado elegible por
+ * "Cualquiera disponible": pide los huecos de CADA candidato elegible por
  * separado (`get_available_slots` ya sabe hacerlo uno a uno) y los junta
  * en una sola lista de horas, sin duplicar una misma hora si varios
- * empleados la tienen libre — se queda con el primero de la lista
+ * candidatos la tienen libre — se queda con el primero de la lista
  * (`employeeIds` ya viene en el orden en que se quiera priorizar) para
  * cada hora repetida. Así la persona que reserva solo ve "a qué horas hay
- * hueco" (como si no hubiera empleados), pero la reserva se crea siempre
- * con un empleado concreto y libre de verdad — nunca con `employee_id`
- * nulo, que rompería la garantía de no-solape (ver el comentario en
- * `0018_employees_feature.sql`).
+ * hueco", pero la reserva se crea siempre con un candidato concreto y
+ * libre de verdad — nunca "sin decidir", que rompería la garantía de
+ * no-solape (ver el comentario en `0018_employees_feature.sql`).
+ *
+ * `null` dentro de `employeeIds` representa al gerente (Fase 9.2): su
+ * propia agenda ("sin empleado") entra en la mezcla igual que cualquier
+ * empleado real, para no perderla en cuanto el negocio tiene empleados.
  */
 export async function getAvailableSlotsAnyEmployee(
   client: TypedClient,
-  params: { businessId: string; serviceId: string; date: string; employeeIds: string[] },
+  params: { businessId: string; serviceId: string; date: string; employeeIds: (string | null)[] },
 ): Promise<AvailableSlotWithEmployee[]> {
   const perEmployee = await Promise.all(
     params.employeeIds.map(async (employeeId) => ({
-      employeeId,
+      employeeId: employeeId ?? undefined,
       slots: await getAvailableSlots(client, { ...params, employeeId }),
     })),
   );

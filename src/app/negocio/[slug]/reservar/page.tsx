@@ -68,19 +68,19 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
   const redirectQuery = redirectParams.toString();
   const redirectTo = `/negocio/${params.slug}/reservar${redirectQuery ? `?${redirectQuery}` : ""}`;
 
-  // Si el servicio inicial tiene 2+ empleados asignados, hace falta
+  // Si el servicio inicial tiene 1+ empleados asignados, hace falta
   // elegir con quién antes de poder enseñar huecos (o "cualquiera
   // disponible", que el propio asistente resuelve en el cliente) — así
   // que no se piden huecos aquí todavía, se deja que el asistente
-  // arranque en el paso "Elige con quién". Con exactamente 1 empleado
-  // asignado no hace falta preguntar nada — se reserva directamente con
-  // ese, como si no hubiera paso de elegir. Sin ninguno asignado (negocio
-  // sin empleados, o este servicio en concreto sin asignar), funciona
-  // igual que siempre: los huecos del horario general.
+  // arranque en el paso "Elige con quién". El gerente (Fase 9.2) siempre
+  // cuenta como un candidato más además de los empleados reales, así que
+  // con 1 solo empleado asignado YA hace falta preguntar (él o el
+  // gerente) — ya no se auto-selecciona en silencio como antes. Sin
+  // ningún empleado real asignado (negocio sin empleados, o este servicio
+  // en concreto sin asignar), funciona igual que siempre: los huecos del
+  // horario general, que son los del gerente.
   const effectiveService = services.find((s) => s.id === effectiveServiceId) ?? null;
-  const needsEmployeeStep = Boolean(effectiveService && effectiveService.employees.length >= 2);
-  const singleEmployeeId =
-    effectiveService && effectiveService.employees.length === 1 ? effectiveService.employees[0].id : null;
+  const needsEmployeeStep = Boolean(effectiveService && effectiveService.employees.length >= 1);
 
   let initialSlots: SlotWithEmployee[] = [];
   if (effectiveServiceId && !needsEmployeeStep) {
@@ -89,9 +89,9 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
         businessId: business.id,
         serviceId: effectiveServiceId,
         date: today,
-        employeeId: singleEmployeeId,
+        employeeId: null,
       });
-      initialSlots = slots.map((slot) => ({ ...slot, employeeId: singleEmployeeId ?? undefined }));
+      initialSlots = slots.map((slot) => ({ ...slot, employeeId: undefined }));
     } catch {
       initialSlots = [];
     }
@@ -120,6 +120,8 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
             businessId={business.id}
             businessName={business.name}
             timezone={business.timezone}
+            businessAddress={business.address}
+            managerName={business.manager_display_name ?? business.name}
             services={services}
             initialServiceId={effectiveServiceId}
             initialDate={today}

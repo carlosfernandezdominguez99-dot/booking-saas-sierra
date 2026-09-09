@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/Label";
 import { Alert } from "@/components/ui/Alert";
 import { saveBusinessProfileAction } from "@/app/dashboard/configuracion/actions";
 
-type Profile = { description: string; address: string; city: string };
+type Profile = { description: string; address: string; city: string; managerDisplayName: string };
 
 export function BusinessProfileForm({ initialProfile }: { initialProfile: Profile }) {
   const [profile, setProfile] = useState(initialProfile);
@@ -52,12 +52,30 @@ export function BusinessProfileForm({ initialProfile }: { initialProfile: Profil
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="profile-address">Dirección</Label>
-          <Input id="profile-address" value={profile.address} onChange={(e) => patch({ address: e.target.value })} />
+          <Input
+            id="profile-address"
+            required
+            value={profile.address}
+            onChange={(e) => patch({ address: e.target.value })}
+          />
         </div>
         <div>
           <Label htmlFor="profile-city">Ciudad</Label>
           <Input id="profile-city" value={profile.city} onChange={(e) => patch({ city: e.target.value })} />
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="profile-manager-name">Tu nombre como encargado</Label>
+        <Input
+          id="profile-manager-name"
+          required
+          value={profile.managerDisplayName}
+          onChange={(e) => patch({ managerDisplayName: e.target.value })}
+        />
+        <p className="mt-1 text-xs text-ink-400">
+          Así te ve el cliente al elegir "con quién" si el negocio también tiene empleados.
+        </p>
       </div>
 
       <Button type="button" size="sm" loading={isPending} onClick={handleSave}>

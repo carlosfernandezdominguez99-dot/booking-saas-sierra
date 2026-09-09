@@ -176,7 +176,12 @@ export async function cancelBookingAction(bookingId: string): Promise<{ error?: 
 
     revalidatePath("/mis-citas");
     return {};
-  } catch {
+  } catch (err) {
+    // Se deja constancia del error real en los logs — antes se perdía del
+    // todo, así que si esto volviera a pasar (la reoferta a lista de
+    // espera ya queda aislada en la 0021, pero por si hay otra causa) se
+    // podría ver cuál es en vez de a ciegas.
+    console.error("[cancelBookingAction] No se pudo cancelar:", err);
     return { error: "No se pudo cancelar la reserva. Inténtalo de nuevo." };
   }
 }

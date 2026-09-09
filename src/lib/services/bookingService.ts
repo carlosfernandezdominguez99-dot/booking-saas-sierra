@@ -109,6 +109,12 @@ export interface ListBookingsParams {
   statuses?: BookingStatus[];
   /** Orden por `start_time`. Por defecto ascendente. */
   order?: "asc" | "desc";
+  /**
+   * Filtro "de quién" es la agenda (Fase 9.2). `undefined` (por defecto):
+   * sin filtrar, todas. `null`: solo las del propio gerente
+   * (`employee_id is null`). Un id: solo las de ese empleado.
+   */
+  employeeId?: string | null;
 }
 
 /**
@@ -131,6 +137,9 @@ export async function listBookings(client: TypedClient, params: ListBookingsPara
   if (params.from) query = query.gte("start_time", params.from);
   if (params.to) query = query.lt("start_time", params.to);
   if (params.statuses && params.statuses.length > 0) query = query.in("status", params.statuses);
+  if (params.employeeId !== undefined) {
+    query = params.employeeId === null ? query.is("employee_id", null) : query.eq("employee_id", params.employeeId);
+  }
 
   const { data, error } = (await query.order("start_time", {
     ascending: params.order !== "desc",

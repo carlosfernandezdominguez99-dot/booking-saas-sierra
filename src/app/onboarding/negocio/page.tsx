@@ -43,6 +43,7 @@ export default async function OnboardingNegocioPage() {
           description: business.description ?? "",
           address: business.address ?? "",
           city: business.city ?? "",
+          managerDisplayName: business.manager_display_name ?? business.name,
         }}
         initialServices={services}
         initialWeeklyHours={hoursRowsToWeekly(hoursRows)}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireBusinessContext } from "@/lib/services/authContext";
 import { listBookingsWithDetails, type BookingWithDetails } from "@/lib/services/bookingService";
+import { listEmployees } from "@/lib/services/employeesService";
 import { BookingsList } from "@/components/dashboard/BookingsList";
 import { CalendarPicker } from "@/components/dashboard/CalendarPicker";
 import { Card } from "@/components/ui/Card";
@@ -32,7 +33,7 @@ function formatTime(iso: string, timezone: string): string {
 export default async function CalendarioPage({
   searchParams,
 }: {
-  searchParams: { date?: string; view?: string };
+  searchParams: { date?: string; view?: string; empleado?: string };
 }) {
   const { supabase, business } = await requireBusinessContext();
   const timezone = business.timezone;
@@ -40,6 +41,17 @@ export default async function CalendarioPage({
   const today = todayInTimezone(timezone);
   const date = searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : today;
   const view: ViewKey = VIEWS.some((v) => v.key === searchParams.view) ? (searchParams.view as ViewKey) : "day";
+
+  // Fase 9.2: filtro "de quién" es la agenda — sin parámetro, todas
+  // (dueño viendo el conjunto); "yo" es solo la del gerente (employee_id
+  // null); un id concreto es solo ese empleado. `undefined` en
+  // `listBookingsWithDetails` significa "sin filtrar", así que se deja
+  // así tal cual para el caso "todos".
+  const employees = await listEmployees(supabase, business.id);
+  const employeeFilter: string | null | undefined =
+    searchParams.empleado === "yo" ? null : searchParams.empleado || undefined;
+  const employeeParam =
+    employeeFilter === undefined ? "" : `&empleado=${employeeFilter === null ? "yo" : employeeFilter}`;
 
   // Rango a consultar y datos para la cabecera, según la vista activa.
   let rangeFrom: string;
@@ -56,8 +68,8 @@ export default async function CalendarioPage({
     weekDays = Array.from({ length: 7 }, (_, i) => addDaysToDateString(weekStart, i));
     rangeFrom = zonedMidnightToUtcIso(weekStart, timezone);
     rangeTo = zonedMidnightToUtcIso(addDaysToDateString(weekStart, 7), timezone);
-    prevHref = `/dashboard/calendario?view=week&date=${addDaysToDateString(date, -7)}`;
-    nextHref = `/dashboard/calendario?view=week&date=${addDaysToDateString(date, 7)}`;
+    prevHref = `/dashboard/calendario?view=week&date=${addDaysToDateString(date, -7)}${employeeParam}`;
+    nextHref = `/dashboard/calendario?view=week&date=${addDaysToDateString(date, 7)}${employeeParam}`;
     const startLabel = new Date(`${weekStart}T00:00:00Z`).toLocaleDateString("es-ES", {
       timeZone: "UTC",
       day: "numeric",
@@ -76,8 +88,8 @@ export default async function CalendarioPage({
     const gridEnd = monthWeeks[monthWeeks.length - 1][6];
     rangeFrom = zonedMidnightToUtcIso(gridStart, timezone);
     rangeTo = zonedMidnightToUtcIso(addDaysToDateString(gridEnd, 1), timezone);
-    prevHref = `/dashboard/calendario?view=month&date=${addMonthsToDateString(date, -1)}`;
-    nextHref = `/dashboard/calendario?view=month&date=${addMonthsToDateString(date, 1)}`;
+    prevHref = `/dashboard/calendario?view=month&date=${addMonthsToDateString(date, -1)}${employeeParam}`;
+    nextHref = `/dashboard/calendario?view=month&date=${addMonthsToDateString(date, 1)}${employeeParam}`;
     headerLabel = new Date(`${monthStart}T00:00:00Z`).toLocaleDateString("es-ES", {
       timeZone: "UTC",
       month: "long",
@@ -86,8 +98,8 @@ export default async function CalendarioPage({
   } else {
     rangeFrom = zonedMidnightToUtcIso(date, timezone);
     rangeTo = zonedMidnightToUtcIso(addDaysToDateString(date, 1), timezone);
-    prevHref = `/dashboard/calendario?view=day&date=${addDaysToDateString(date, -1)}`;
-    nextHref = `/dashboard/calendario?view=day&date=${addDaysToDateString(date, 1)}`;
+    prevHref = `/dashboard/calendario?view=day&date=${addDaysToDateString(date, -1)}${employeeParam}`;
+    nextHref = `/dashboard/calendario?view=day&date=${addDaysToDateString(date, 1)}${employeeParam}`;
     headerLabel = new Date(rangeFrom).toLocaleDateString("es-ES", {
       timeZone: timezone,
       weekday: "long",
@@ -102,6 +114,7 @@ export default async function CalendarioPage({
     to: rangeTo,
     statuses: ["pending", "confirmed", "completed", "no_show"],
     order: "asc",
+    employeeId: employeeFilter,
   });
 
   const bookingsByDate = new Map<string, BookingWithDetails[]>();
@@ -119,12 +132,47 @@ export default async function CalendarioPage({
         <CalendarPicker selectedDate={date} todayStr={today} />
       </div>
 
+      {employees.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/dashboard/calendario?view=${view}&date=${date}`}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              employeeFilter === undefined ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
+            )}
+          >
+            Todos
+          </Link>
+          <Link
+            href={`/dashboard/calendario?view=${view}&date=${date}&empleado=yo`}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              employeeFilter === null ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
+            )}
+          >
+            Tú
+          </Link>
+          {employees.map((employee) => (
+            <Link
+              key={employee.id}
+              href={`/dashboard/calendario?view=${view}&date=${date}&empleado=${employee.id}`}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                employeeFilter === employee.id ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
+              )}
+            >
+              {employee.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">
           {VIEWS.map((v) => (
             <Link
               key={v.key}
-              href={`/dashboard/calendario?view=${v.key}&date=${date}`}
+              href={`/dashboard/calendario?view=${v.key}&date=${date}${employeeParam}`}
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
                 view === v.key ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200",
@@ -145,7 +193,7 @@ export default async function CalendarioPage({
             <p className="text-sm font-medium capitalize text-ink-900">{headerLabel}</p>
             {date !== today && (
               <Link
-                href={`/dashboard/calendario?view=${view}&date=${today}`}
+                href={`/dashboard/calendario?view=${view}&date=${today}${employeeParam}`}
                 className="text-xs text-brand-600 hover:underline"
               >
                 Volver a hoy
@@ -181,7 +229,7 @@ export default async function CalendarioPage({
               weekday: "short",
             });
             return (
-              <Link key={d} href={`/dashboard/calendario?view=day&date=${d}`} className="block">
+              <Link key={d} href={`/dashboard/calendario?view=day&date=${d}${employeeParam}`} className="block">
                 <Card
                   className={cn(
                     "h-full transition-colors hover:border-ink-300",
@@ -233,7 +281,7 @@ export default async function CalendarioPage({
               return (
                 <Link
                   key={d}
-                  href={`/dashboard/calendario?view=day&date=${d}`}
+                  href={`/dashboard/calendario?view=day&date=${d}${employeeParam}`}
                   className={cn(
                     "flex min-h-[3.25rem] flex-col items-center gap-0.5 rounded-lg border p-1 transition-colors hover:border-ink-300 sm:min-h-[5.5rem] sm:items-stretch sm:gap-1 sm:p-1.5",
                     inMonth ? "border-ink-100 bg-white" : "border-ink-50 bg-ink-50/50",

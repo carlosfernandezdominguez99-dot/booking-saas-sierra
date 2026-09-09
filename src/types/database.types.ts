@@ -82,6 +82,7 @@ export interface Database {
           address: string | null;
           city: string | null;
           business_type: string | null;
+          manager_display_name: string | null;
           timezone: string;
           subscription_status: SubscriptionStatus;
           trial_ends_at: string;
@@ -102,6 +103,7 @@ export interface Database {
           address?: string | null;
           city?: string | null;
           business_type?: string | null;
+          manager_display_name?: string | null;
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;
@@ -122,6 +124,7 @@ export interface Database {
           address?: string | null;
           city?: string | null;
           business_type?: string | null;
+          manager_display_name?: string | null;
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;
@@ -564,6 +567,45 @@ export interface Database {
           account_id?: string;
           token?: string;
           expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      reviews: {
+        Row: {
+          id: string;
+          business_id: string;
+          customer_id: string;
+          booking_id: string | null;
+          token: string;
+          rating: number | null;
+          comment: string | null;
+          requested_at: string;
+          submitted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          customer_id: string;
+          booking_id?: string | null;
+          token?: string;
+          rating?: number | null;
+          comment?: string | null;
+          requested_at?: string;
+          submitted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          customer_id?: string;
+          booking_id?: string | null;
+          token?: string;
+          rating?: number | null;
+          comment?: string | null;
+          requested_at?: string;
+          submitted_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

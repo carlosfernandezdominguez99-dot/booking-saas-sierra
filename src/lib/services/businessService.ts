@@ -22,7 +22,7 @@ const MAX_SLUG_ATTEMPTS = 5;
  */
 export async function createBusinessForOwner(
   client: TypedClient,
-  params: { ownerId: string; name: string; phone: string; businessType: string },
+  params: { ownerId: string; name: string; phone: string; businessType: string; managerName: string },
 ) {
   const baseSlug = slugify(params.name) || "negocio";
   let attempt = 0;
@@ -46,6 +46,11 @@ export async function createBusinessForOwner(
       slug: candidateSlug,
       phone: params.phone,
       business_type: params.businessType,
+      // Fase 9.2: "sin empleado" pasa a ser la agenda del propio gerente —
+      // se le pone su nombre desde ya (editable después en Configuración)
+      // para que el cliente sepa con quién queda si el negocio también
+      // tiene empleados de verdad.
+      manager_display_name: params.managerName || params.name,
     };
 
     const { data, error } = (await (client.from("businesses") as any)
@@ -145,6 +150,7 @@ export async function ensureBusinessForUser(
     business_name?: string;
     business_type?: string;
     phone?: string;
+    full_name?: string;
   };
 
   if (!metadata.business_name) return null;
@@ -154,25 +160,30 @@ export async function ensureBusinessForUser(
     name: metadata.business_name,
     phone: metadata.phone ?? "",
     businessType: metadata.business_type ?? "",
+    managerName: metadata.full_name ?? "",
   });
 
   return getPrimaryBusinessForUser(client, user.id);
 }
 
 /**
- * Paso 1 del onboarding: descripción, dirección y ciudad. El resto de
- * datos del negocio (nombre, teléfono, tipo) ya se piden en el registro.
+ * Paso 1 del onboarding: descripción, dirección, ciudad y el nombre con el
+ * que el gerente aparece ante el cliente (Fase 9.2). El resto de datos del
+ * negocio (nombre, teléfono, tipo) ya se piden en el registro.
  */
 export async function updateBusinessProfile(
   client: TypedClient,
   businessId: string,
-  input: { description?: string; address?: string; city?: string },
+  input: { description?: string; address?: string; city?: string; managerDisplayName?: string },
 ): Promise<void> {
   const updatePayload: BusinessUpdate = {
     description: input.description ? input.description : null,
     address: input.address ? input.address : null,
     city: input.city ? input.city : null,
   };
+  if (input.managerDisplayName !== undefined) {
+    updatePayload.manager_display_name = input.managerDisplayName || null;
+  }
 
   // `as any` en el acceso a la tabla por el mismo motivo que en
   // `createBusinessForOwner`: ver la nota larga en `database.types.ts`.

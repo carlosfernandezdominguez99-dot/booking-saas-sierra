@@ -7,7 +7,15 @@ import type { Database } from "@/types/database.types";
 // algunos casos concretos colapsaba a `never` en el build de Vercel.
 export type PublicBusiness = Pick<
   Database["public"]["Tables"]["businesses"]["Row"],
-  "id" | "name" | "description" | "logo_url" | "city" | "business_type" | "timezone"
+  | "id"
+  | "name"
+  | "description"
+  | "logo_url"
+  | "address"
+  | "city"
+  | "business_type"
+  | "timezone"
+  | "manager_display_name"
 >;
 
 export type PublicEmployee = Pick<Database["public"]["Tables"]["employees"]["Row"], "id" | "name" | "photo_url">;
@@ -39,7 +47,7 @@ export async function getPublicBusinessBySlug(
 
   const { data: business } = (await supabase
     .from("businesses")
-    .select("id, name, description, logo_url, city, business_type, timezone")
+    .select("id, name, description, logo_url, address, city, business_type, timezone, manager_display_name")
     .eq("slug", slug)
     .maybeSingle()) as unknown as { data: PublicBusiness | null };
 

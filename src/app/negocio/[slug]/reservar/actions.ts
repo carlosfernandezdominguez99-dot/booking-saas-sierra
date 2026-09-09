@@ -24,7 +24,8 @@ export interface GetSlotsActionInput {
    * lista de ids elegibles para ese servicio, con `anyOf`.
    */
   employeeId?: string | null;
-  anyOf?: string[];
+  /** `null` en la lista representa al gerente (Fase 9.2) — ver `getAvailableSlotsAnyEmployee`. */
+  anyOf?: (string | null)[];
 }
 
 // Cada hueco lleva ya el empleado con el que se reservaría (si el negocio
@@ -102,6 +103,8 @@ export interface CreateAccountBookingActionResult {
    * que cancelar la anterior él mismo o avisar al negocio.
    */
   replaceWarning?: string;
+  /** Dirección del negocio (Fase 9.1), para el botón "Cómo llegar" en la pantalla de confirmación. */
+  businessAddress?: string | null;
 }
 
 /**
@@ -149,13 +152,20 @@ export async function createAccountBookingAction(
     // aparte porque `create_account_booking` no la devuelve. Lectura
     // pública normal (RLS ya deja leer negocios activos a `anon`).
     const { data: businessRow } = await (supabase.from("businesses") as any)
-      .select("timezone")
+      .select("timezone, address, manager_display_name")
       .eq("id", input.businessId)
       .maybeSingle();
     const timezone = (businessRow?.timezone as string | undefined) ?? "Europe/Madrid";
+    const businessAddress = (businessRow?.address as string | undefined) ?? null;
 
-    // Nombre del empleado (si lo hay) para que el recordatorio diga con
-    // quién es la cita, no solo en qué negocio.
+    // Nombre de con quién es la cita, para que el recordatorio lo diga y
+    // no solo en qué negocio. Con un empleado real, el suyo. Sin ninguno
+    // (Fase 9.2: el propio gerente) se le llama por su nombre igual que a
+    // cualquier empleado, pero SOLO si este servicio también tiene
+    // empleados reales asignados — el cliente lo eligió entre opciones.
+    // Si el servicio no usa empleados en absoluto, se deja sin nombre
+    // (comportamiento de siempre, sin ruido de más para negocios de una
+    // sola persona).
     let employeeName: string | null = null;
     if (input.employeeId) {
       const { data: employeeRow } = await (supabase.from("employees") as any)
@@ -163,6 +173,13 @@ export async function createAccountBookingAction(
         .eq("id", input.employeeId)
         .maybeSingle();
       employeeName = (employeeRow?.name as string | undefined) ?? null;
+    } else {
+      const { count } = (await (supabase.from("employee_services") as any)
+        .select("employee_id", { count: "exact", head: true })
+        .eq("service_id", input.serviceId)) as unknown as { count: number | null };
+      if (count && count > 0) {
+        employeeName = (businessRow?.manager_display_name as string | undefined) ?? null;
+      }
     }
 
     // "Envío" de confirmación por WhatsApp — sigue siendo un mock que solo
@@ -194,6 +211,7 @@ export async function createAccountBookingAction(
         startTimeIso: result.startTime,
         timezone,
         employeeName,
+        businessAddress,
       });
     } catch {
       // No-op: best-effort.
@@ -213,7 +231,7 @@ export async function createAccountBookingAction(
       }
     }
 
-    return { result, replaceWarning };
+    return { result, replaceWarning, businessAddress };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "No se pudo crear la reserva. Inténtalo de nuevo." };
   }

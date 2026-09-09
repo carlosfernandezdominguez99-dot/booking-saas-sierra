@@ -13,6 +13,7 @@ const PATHS: Record<DashboardNavItem["icon"], string> = {
   chart: "M4 19V10M10 19V5M16 19v-7M22 19H2",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   waitlist: "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0",
+  star: "M12 3.5l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.4l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3.5Z",
 };
 
 export function Icon({ name, className }: { name: DashboardNavItem["icon"]; className?: string }) {

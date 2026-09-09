@@ -21,6 +21,7 @@ const PRIMARY_ITEMS: { href: string; label: string; icon: Parameters<typeof Icon
 const MORE_ITEMS: { href: string; label: string; icon: Parameters<typeof Icon>[0]["name"]; roles?: BusinessMemberRole[] }[] = [
   { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart", roles: ["owner"] },
   { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist", roles: ["owner"] },
+  { href: "/dashboard/resenas", label: "Reseñas", icon: "star", roles: ["owner"] },
   { href: "/dashboard/servicios", label: "Servicios", icon: "scissors", roles: ["owner"] },
   { href: "/dashboard/horarios", label: "Horarios", icon: "clock" },
   { href: "/dashboard/empleados", label: "Empleados", icon: "user-group", roles: ["owner"] },

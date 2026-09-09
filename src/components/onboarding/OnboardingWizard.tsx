@@ -35,7 +35,7 @@ export function OnboardingWizard({
   publicUrl,
 }: {
   businessName: string;
-  initialProfile: { description: string; address: string; city: string };
+  initialProfile: { description: string; address: string; city: string; managerDisplayName: string };
   initialServices: ServiceRow[];
   initialWeeklyHours: WeeklyHoursInput;
   initialBookingSettings: BookingSettingsInput;
@@ -104,7 +104,7 @@ function ProfileStep({
   initialProfile,
   onNext,
 }: {
-  initialProfile: { description: string; address: string; city: string };
+  initialProfile: { description: string; address: string; city: string; managerDisplayName: string };
   onNext: () => void;
 }) {
   const [profile, setProfile] = useState(initialProfile);
@@ -113,6 +113,19 @@ function ProfileStep({
 
   function handleNext() {
     setError(null);
+    // La dirección hace falta para poder ofrecer el botón "Cómo llegar" en
+    // la cita del cliente, y el nombre del encargado para poder enseñarlo
+    // como opción "con quién" — se comprueba también aquí (no solo en el
+    // servidor) para no hacer un viaje de más por algo que se ve a simple
+    // vista.
+    if (!profile.address.trim()) {
+      setError("Introduce la dirección del negocio.");
+      return;
+    }
+    if (!profile.managerDisplayName.trim()) {
+      setError("Introduce el nombre del encargado.");
+      return;
+    }
     startTransition(async () => {
       const result = await saveBusinessProfileAction(profile);
       if (result.error) {
@@ -140,13 +153,31 @@ function ProfileStep({
       </div>
 
       <div>
-        <Label htmlFor="address">Dirección (opcional)</Label>
+        <Label htmlFor="address">Dirección</Label>
         <Input
           id="address"
           placeholder="Calle Mayor 1"
+          required
           value={profile.address}
           onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
         />
+        <p className="mt-1 text-xs text-ink-400">
+          Así el cliente podrá pedir "cómo llegar" desde su cita.
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="managerDisplayName">Tu nombre como encargado</Label>
+        <Input
+          id="managerDisplayName"
+          placeholder="Ej. Carlos"
+          required
+          value={profile.managerDisplayName}
+          onChange={(e) => setProfile((p) => ({ ...p, managerDisplayName: e.target.value }))}
+        />
+        <p className="mt-1 text-xs text-ink-400">
+          Si algún día añades empleados, así es como te verá el cliente para elegir contigo en vez de con ellos — puedes cambiarlo cuando quieras.
+        </p>
       </div>
 
       <div>

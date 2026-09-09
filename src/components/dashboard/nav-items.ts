@@ -14,7 +14,8 @@ export interface DashboardNavItem {
     | "settings"
     | "chart"
     | "more"
-    | "waitlist";
+    | "waitlist"
+    | "star";
   /**
    * A qué roles se les enseña este punto de menú. Sin esto, a todos
    * (comportamiento de siempre). Un empleado con acceso propio (`staff`)
@@ -34,6 +35,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { href: "/dashboard/empleados", label: "Empleados", icon: "user-group", roles: ["owner"] },
   { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart", roles: ["owner"] },
   { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist", roles: ["owner"] },
+  { href: "/dashboard/resenas", label: "Reseñas", icon: "star", roles: ["owner"] },
   { href: "/dashboard/configuracion", label: "Configuración", icon: "settings", roles: ["owner"] },
 ];
 

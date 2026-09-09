@@ -84,6 +84,7 @@ export async function registerAction(
       name: businessName,
       phone,
       businessType,
+      managerName: fullName,
     });
   } catch {
     return {

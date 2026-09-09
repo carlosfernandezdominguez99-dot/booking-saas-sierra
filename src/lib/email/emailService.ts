@@ -1,4 +1,5 @@
 import "server-only";
+import { buildDirectionsUrl } from "@/lib/utils/maps";
 
 /**
  * Capa de servicio para email transaccional (confirmaciones, cancelaciones,
@@ -41,6 +42,8 @@ export interface BookingConfirmationEmailPayload {
   timezone: string;
   /** Con qué empleado, si el negocio los usa y se asignó uno concreto. */
   employeeName?: string | null;
+  /** Dirección del negocio (Fase 9.1) — si la hay, se añade el botón "Cómo llegar". */
+  businessAddress?: string | null;
 }
 
 export interface CancellationEmailPayload {
@@ -61,6 +64,14 @@ export interface WaitlistOfferEmailPayload {
   timezone: string;
   /** Enlace público de un solo uso para aceptar/rechazar. */
   respondUrl: string;
+}
+
+export interface ReviewRequestEmailPayload {
+  toEmail: string;
+  customerName: string;
+  businessName: string;
+  /** Enlace público de un solo uso para dejar la opinión. */
+  reviewUrl: string;
 }
 
 export interface EmployeeInviteEmailPayload {
@@ -149,11 +160,15 @@ function wrapEmail(title: string, bodyHtml: string): string {
 export async function sendBookingConfirmationEmail(
   payload: BookingConfirmationEmailPayload,
 ): Promise<EmailResult> {
+  const directionsButton = payload.businessAddress
+    ? `<p><a href="${buildDirectionsUrl(payload.businessAddress)}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Cómo llegar</a></p>`
+    : "";
   const html = wrapEmail(
     "¡Reserva confirmada!",
     `<p>Hola ${payload.customerName},</p>
      <p>Tu reserva en <strong>${payload.businessName}</strong> está confirmada:</p>
-     <p><strong>${payload.serviceName}</strong>${payload.employeeName ? ` con ${payload.employeeName}` : ""}<br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>`,
+     <p><strong>${payload.serviceName}</strong>${payload.employeeName ? ` con ${payload.employeeName}` : ""}<br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
+     ${directionsButton}`,
   );
   return sendEmail(payload.toEmail, `Reserva confirmada en ${payload.businessName}`, html);
 }
@@ -206,4 +221,21 @@ export async function sendWaitlistJoinConfirmationEmail(
      <p style="font-size:12px;color:#888;">Crea una cuenta gratis con este mismo email en "Mis citas" para ver ahí todas tus reservas (también las de otros negocios) y poder darte de baja cuando quieras.</p>`,
   );
   return sendEmail(payload.toEmail, `Apuntado a la lista de espera de ${payload.businessName}`, html);
+}
+
+/**
+ * Fase 9.3: se manda desde el cron `/api/cron/review-requests`, en cuanto
+ * `request_pending_reviews` detecta que la primera cita confirmada de ese
+ * cliente con ese negocio ya ha terminado — nunca más de una vez por
+ * cliente y negocio (lo garantiza la fila única en `reviews`).
+ */
+export async function sendReviewRequestEmail(payload: ReviewRequestEmailPayload): Promise<EmailResult> {
+  const html = wrapEmail(
+    "¿Qué te ha parecido?",
+    `<p>Hola ${payload.customerName},</p>
+     <p>Esperamos que haya ido bien tu cita en <strong>${payload.businessName}</strong>. ¿Nos dejas tu opinión? Solo te llevará un minuto.</p>
+     <p><a href="${payload.reviewUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Dejar mi opinión</a></p>
+     <p style="font-size:12px;color:#888;">Este enlace es personal y de un solo uso.</p>`,
+  );
+  return sendEmail(payload.toEmail, `¿Qué te ha parecido tu cita en ${payload.businessName}?`, html);
 }

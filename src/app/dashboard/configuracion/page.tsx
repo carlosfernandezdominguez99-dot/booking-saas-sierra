@@ -106,6 +106,7 @@ export default async function ConfiguracionPage({ searchParams }: ConfiguracionP
             description: business.description ?? "",
             address: business.address ?? "",
             city: business.city ?? "",
+            managerDisplayName: business.manager_display_name ?? business.name,
           }}
         />
       </Card>
