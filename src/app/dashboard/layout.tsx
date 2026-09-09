@@ -42,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <EmployeeScopeSwitcher
               employees={employees.map((e) => ({ id: e.id, name: e.name, photoUrl: e.photo_url }))}
               managerName={business.manager_display_name ?? business.name}
-              managerPhotoUrl={business.logo_url}
+              managerPhotoUrl={business.manager_photo_url}
               activeKey={activeKey}
             />
           </div>

@@ -83,6 +83,7 @@ export interface Database {
           city: string | null;
           business_type: string | null;
           manager_display_name: string | null;
+          manager_photo_url: string | null;
           timezone: string;
           subscription_status: SubscriptionStatus;
           trial_ends_at: string;
@@ -104,6 +105,7 @@ export interface Database {
           city?: string | null;
           business_type?: string | null;
           manager_display_name?: string | null;
+          manager_photo_url?: string | null;
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;
@@ -125,6 +127,7 @@ export interface Database {
           city?: string | null;
           business_type?: string | null;
           manager_display_name?: string | null;
+          manager_photo_url?: string | null;
           timezone?: string;
           subscription_status?: SubscriptionStatus;
           trial_ends_at?: string;

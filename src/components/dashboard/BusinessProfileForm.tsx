@@ -9,7 +9,19 @@ import { saveBusinessProfileAction } from "@/app/dashboard/configuracion/actions
 
 type Profile = { description: string; address: string; city: string; managerDisplayName: string };
 
-export function BusinessProfileForm({ initialProfile }: { initialProfile: Profile }) {
+export function BusinessProfileForm({
+  initialProfile,
+  hideManagerNameField,
+}: {
+  initialProfile: Profile;
+  /**
+   * Fase 11: cuando hay empleados, el alias del gerente se edita desde su
+   * propia tarjeta ("Tu perfil como gerente", junto a su foto) en vez de
+   * aquí — se sigue guardando igual (viaja con el resto del perfil), solo
+   * se oculta este campo para no tener dos sitios editando lo mismo.
+   */
+  hideManagerNameField?: boolean;
+}) {
   const [profile, setProfile] = useState(initialProfile);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -65,18 +77,20 @@ export function BusinessProfileForm({ initialProfile }: { initialProfile: Profil
         </div>
       </div>
 
-      <div>
-        <Label htmlFor="profile-manager-name">Tu nombre como encargado</Label>
-        <Input
-          id="profile-manager-name"
-          required
-          value={profile.managerDisplayName}
-          onChange={(e) => patch({ managerDisplayName: e.target.value })}
-        />
-        <p className="mt-1 text-xs text-ink-400">
-          Así te ve el cliente al elegir &quot;con quién&quot; si el negocio también tiene empleados.
-        </p>
-      </div>
+      {!hideManagerNameField && (
+        <div>
+          <Label htmlFor="profile-manager-name">Tu nombre como encargado</Label>
+          <Input
+            id="profile-manager-name"
+            required
+            value={profile.managerDisplayName}
+            onChange={(e) => patch({ managerDisplayName: e.target.value })}
+          />
+          <p className="mt-1 text-xs text-ink-400">
+            Así te ve el cliente al elegir &quot;con quién&quot; si el negocio también tiene empleados.
+          </p>
+        </div>
+      )}
 
       <Button type="button" size="sm" loading={isPending} onClick={handleSave}>
         Guardar

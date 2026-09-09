@@ -195,6 +195,22 @@ export async function updateBusinessProfile(
 }
 
 /**
+ * Actualiza SOLO el alias del gerente (Fase 11) — a diferencia de
+ * `updateBusinessProfile`, que guarda el perfil entero del negocio, esto es
+ * lo que usa la tarjeta "Tu perfil como gerente" de Configuración para
+ * poder cambiar el alias sin tocar el resto de datos del negocio.
+ */
+export async function updateManagerDisplayName(client: TypedClient, businessId: string, name: string): Promise<void> {
+  const updatePayload: BusinessUpdate = { manager_display_name: name };
+
+  const { error } = await (client.from("businesses") as any)
+    .update(updatePayload)
+    .eq("id", businessId);
+
+  if (error) throw error;
+}
+
+/**
  * Marca el asistente de onboarding como completado (último paso, paso 5).
  */
 export async function completeOnboarding(client: TypedClient, businessId: string): Promise<void> {

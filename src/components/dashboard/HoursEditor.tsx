@@ -75,6 +75,24 @@ export function HoursEditor({
     }));
   }
 
+  // Pedido explícito de Carlos: si abre de lunes a viernes con el mismo
+  // horario, poder cambiarlo una sola vez en vez de repetirlo día por día.
+  // Copia el horario del lunes (abierto/cerrado y sus tramos) a
+  // martes-viernes; sábado y domingo no se tocan, porque casi nunca
+  // comparten horario con el resto de la semana laboral.
+  function copyMondayToWeekdays() {
+    const monday = hours.find((d) => d.dayOfWeek === 1);
+    if (!monday) return;
+    setSuccess(false);
+    setHours((prev) =>
+      prev.map((day) =>
+        [2, 3, 4, 5].includes(day.dayOfWeek)
+          ? { ...day, closed: monday.closed, ranges: monday.ranges.map((r) => ({ ...r })) }
+          : day,
+      ),
+    );
+  }
+
   function handleSave() {
     setError(null);
     setSuccess(false);
@@ -154,6 +172,18 @@ export function HoursEditor({
                   </div>
                 )}
               </div>
+
+              {dayOfWeek === 1 && !day.closed && (
+                <div className="mt-2 border-t border-ink-100 pt-2 sm:pl-32">
+                  <button
+                    type="button"
+                    onClick={copyMondayToWeekdays}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    Usar este horario también de martes a viernes
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

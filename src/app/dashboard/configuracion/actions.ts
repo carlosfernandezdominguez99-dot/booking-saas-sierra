@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requireBusinessContext } from "@/lib/services/authContext";
-import { updateBusinessProfile } from "@/lib/services/businessService";
-import { uploadBusinessLogo } from "@/lib/services/logoService";
+import { updateBusinessProfile, updateManagerDisplayName } from "@/lib/services/businessService";
+import { uploadBusinessLogo, uploadManagerPhoto } from "@/lib/services/logoService";
 import { updateBookingSettings } from "@/lib/services/bookingSettingsService";
 import { createCheckoutSession, createBillingPortalSession } from "@/lib/stripe/stripeService";
 import {
   businessProfileSchema,
   bookingSettingsSchema,
+  employeeNameSchema,
   type BusinessProfileInput,
   type BookingSettingsInput,
 } from "@/lib/validations/business";
@@ -66,6 +67,50 @@ export async function uploadLogoAction(formData: FormData): Promise<LogoActionRe
     return { url };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "No se pudo subir el logo." };
+  }
+}
+
+/**
+ * Cambia solo el alias del gerente (Fase 11 — tarjeta "Tu perfil como
+ * gerente"), reutilizando la validación de nombre de `employeeNameSchema`
+ * (misma exigencia: un nombre de persona, no el del negocio).
+ */
+export async function updateManagerNameAction(name: string): Promise<SimpleActionResult> {
+  const parsed = employeeNameSchema.safeParse(name);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Introduce un nombre." };
+  }
+
+  const { supabase, business } = await requireBusinessContext();
+
+  try {
+    await updateManagerDisplayName(supabase, business.id, parsed.data);
+    revalidatePath("/dashboard/configuracion");
+    revalidatePath("/dashboard", "layout");
+    revalidatePath(`/negocio/${business.slug}/reservar`);
+    return {};
+  } catch {
+    return { error: "No se pudo guardar. Inténtalo de nuevo." };
+  }
+}
+
+/** Sube la foto propia del gerente (Fase 11) — su círculo arriba y su tarjeta en "¿con quién?". */
+export async function uploadManagerPhotoAction(formData: FormData): Promise<LogoActionResult> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Selecciona una imagen." };
+  }
+
+  const { supabase, business } = await requireBusinessContext();
+
+  try {
+    const url = await uploadManagerPhoto(supabase, business.id, file);
+    revalidatePath("/dashboard/configuracion");
+    revalidatePath("/dashboard", "layout");
+    revalidatePath(`/negocio/${business.slug}/reservar`);
+    return { url };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "No se pudo subir la foto." };
   }
 }
 

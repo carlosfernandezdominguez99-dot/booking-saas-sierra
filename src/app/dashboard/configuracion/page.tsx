@@ -7,6 +7,8 @@ import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
 import { LogoUploader } from "@/components/dashboard/LogoUploader";
 import { EmployeePhotoUploader } from "@/components/dashboard/EmployeePhotoUploader";
 import { EmployeeIdentityForm } from "@/components/dashboard/EmployeeIdentityForm";
+import { ManagerPhotoUploader } from "@/components/dashboard/ManagerPhotoUploader";
+import { ManagerIdentityForm } from "@/components/dashboard/ManagerIdentityForm";
 import { BusinessProfileForm } from "@/components/dashboard/BusinessProfileForm";
 import { BookingSettingsForm } from "@/components/dashboard/BookingSettingsForm";
 import { SubscriptionCard } from "@/components/dashboard/SubscriptionCard";
@@ -33,8 +35,13 @@ export default async function ConfiguracionPage({ searchParams }: ConfiguracionP
   // vez de los datos del negocio — el resto (enlace público, suscripción,
   // política de reservas) sigue siendo del negocio entero, no tiene
   // sentido "independizarlo" por persona.
-  const { scope } = await getDashboardScope(supabase, business, role, employeeId, employeeName);
+  const { scope, employees } = await getDashboardScope(supabase, business, role, employeeId, employeeName);
   const employeeScope = scope.kind === "employee" ? scope : null;
+  // Fase 11: el gerente solo necesita alias + foto propios (para su
+  // círculo de arriba y el paso público "¿con quién?") cuando hay algún
+  // empleado con quien distinguirse — sin empleados, sigue siendo
+  // simplemente "el negocio", como hasta ahora.
+  const hasEmployees = employees.length > 0;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/negocio/${business.slug}`;
@@ -87,13 +94,32 @@ export default async function ConfiguracionPage({ searchParams }: ConfiguracionP
           </div>
         </Card>
       ) : (
-        <Card>
-          <CardTitle>Logo</CardTitle>
-          <CardDescription className="mb-4">
-            Aparece en tu página de reservas. Recomendado: imagen cuadrada, al menos 200×200 px.
-          </CardDescription>
-          <LogoUploader businessName={business.name} initialLogoUrl={business.logo_url} />
-        </Card>
+        <>
+          {hasEmployees && (
+            <Card>
+              <CardTitle>Tu perfil como gerente</CardTitle>
+              <CardDescription className="mb-4">
+                Alias y foto con los que apareces tú, junto a tus empleados, en el selector de círculos de
+                arriba y en el paso &quot;¿con quién?&quot; al reservar.
+              </CardDescription>
+              <div className="space-y-5">
+                <ManagerPhotoUploader
+                  managerName={business.manager_display_name ?? business.name}
+                  initialPhotoUrl={business.manager_photo_url}
+                />
+                <ManagerIdentityForm initialName={business.manager_display_name ?? business.name} />
+              </div>
+            </Card>
+          )}
+
+          <Card>
+            <CardTitle>Logo</CardTitle>
+            <CardDescription className="mb-4">
+              Aparece en tu página de reservas. Recomendado: imagen cuadrada, al menos 200×200 px.
+            </CardDescription>
+            <LogoUploader businessName={business.name} initialLogoUrl={business.logo_url} />
+          </Card>
+        </>
       )}
 
       <Card>
@@ -138,6 +164,7 @@ export default async function ConfiguracionPage({ searchParams }: ConfiguracionP
               city: business.city ?? "",
               managerDisplayName: business.manager_display_name ?? business.name,
             }}
+            hideManagerNameField={hasEmployees}
           />
         </Card>
       )}

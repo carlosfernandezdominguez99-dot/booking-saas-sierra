@@ -83,6 +83,7 @@ export function BookingWizard({
   timezone,
   businessAddress,
   managerName,
+  managerPhotoUrl,
   services,
   initialServiceId,
   initialDate,
@@ -98,6 +99,8 @@ export function BookingWizard({
   businessAddress?: string | null;
   /** Nombre con el que el gerente aparece como opción "con quién" (Fase 9.2). */
   managerName: string;
+  /** Foto propia del gerente para esa misma tarjeta (Fase 11) — `null` muestra sus iniciales, como con un empleado sin foto. */
+  managerPhotoUrl: string | null;
   services: PublicServiceLite[];
   initialServiceId: string | null;
   initialDate: string;
@@ -380,9 +383,14 @@ export function BookingWizard({
 
           <button type="button" onClick={() => handleSelectEmployee("manager")} className="block w-full text-left">
             <Card className="flex items-center gap-3 transition-colors hover:border-ink-300">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-600">
-                {managerName.charAt(0).toUpperCase()}
-              </div>
+              {managerPhotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={managerPhotoUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-600">
+                  {managerName.charAt(0).toUpperCase()}
+                </div>
+              )}
               <p className="font-medium text-ink-900">{managerName}</p>
             </Card>
           </button>

@@ -16,6 +16,7 @@ export type PublicBusiness = Pick<
   | "business_type"
   | "timezone"
   | "manager_display_name"
+  | "manager_photo_url"
 >;
 
 export type PublicEmployee = Pick<Database["public"]["Tables"]["employees"]["Row"], "id" | "name" | "photo_url">;
@@ -47,7 +48,9 @@ export async function getPublicBusinessBySlug(
 
   const { data: business } = (await supabase
     .from("businesses")
-    .select("id, name, description, logo_url, address, city, business_type, timezone, manager_display_name")
+    .select(
+      "id, name, description, logo_url, address, city, business_type, timezone, manager_display_name, manager_photo_url",
+    )
     .eq("slug", slug)
     .maybeSingle()) as unknown as { data: PublicBusiness | null };
 

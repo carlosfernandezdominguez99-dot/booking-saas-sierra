@@ -104,7 +104,7 @@ export function EmployeeScopeSwitcher({
             </span>
           )}
           <span className={cn("max-w-[4.5rem] truncate text-[11px] font-medium", activeKey === person.key ? "text-ink-900" : "text-ink-400")}>
-            {person.key === "manager" ? "Tú" : person.label}
+            {person.label}
           </span>
         </button>
       ))}

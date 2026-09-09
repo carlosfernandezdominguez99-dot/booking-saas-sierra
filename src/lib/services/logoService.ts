@@ -85,3 +85,38 @@ export async function uploadEmployeePhoto(
 
   return publicUrl;
 }
+
+/**
+ * Sube la foto propia del gerente (Fase 11 — su círculo en el selector de
+ * arriba y su tarjeta en el paso público "¿con quién?"), distinta del logo
+ * del negocio. Mismo bucket `business-logos` y mismo motivo que
+ * `uploadEmployeePhoto`: la ruta empieza por `${businessId}/`, así que ya
+ * queda autorizada sin ninguna policy nueva.
+ */
+export async function uploadManagerPhoto(client: TypedClient, businessId: string, file: File): Promise<string> {
+  const extension = ALLOWED_TYPES[file.type];
+  if (!extension) {
+    throw new Error("Formato no soportado. Usa una imagen PNG, JPG o WEBP.");
+  }
+  if (file.size > MAX_SIZE_BYTES) {
+    throw new Error("La imagen no puede superar los 3 MB.");
+  }
+
+  const path = `${businessId}/manager-${Date.now()}.${extension}`;
+
+  const { error: uploadError } = await client.storage.from(BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: true,
+  });
+  if (uploadError) throw uploadError;
+
+  const { data } = client.storage.from(BUCKET).getPublicUrl(path);
+  const publicUrl = data.publicUrl;
+
+  const { error: updateError } = await (client.from("businesses") as any)
+    .update({ manager_photo_url: publicUrl })
+    .eq("id", businessId);
+  if (updateError) throw updateError;
+
+  return publicUrl;
+}

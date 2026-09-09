@@ -122,6 +122,7 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
             timezone={business.timezone}
             businessAddress={business.address}
             managerName={business.manager_display_name ?? business.name}
+            managerPhotoUrl={business.manager_photo_url}
             services={services}
             initialServiceId={effectiveServiceId}
             initialDate={today}
