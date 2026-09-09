@@ -47,7 +47,25 @@ export default async function MisCitasPage() {
           </span>
         </Link>
 
-        {accountData ? <CustomerAccountDashboard data={accountData} /> : <CustomerAuthForm />}
+        {accountData ? (
+          <CustomerAccountDashboard data={accountData} />
+        ) : (
+          <>
+            <CustomerAuthForm />
+            {/*
+              Sin esto, alguien que cierra sesión aquí (o llega directo a
+              esta URL) se queda sin forma de volver al selector "Soy
+              negocio"/"Soy cliente" de `/login` — este formulario es solo
+              el de cliente.
+            */}
+            <p className="mt-4 text-center text-sm text-ink-400">
+              ¿Eres el negocio?{" "}
+              <Link href="/login" className="font-medium text-brand-600 hover:underline">
+                Inicia sesión aquí
+              </Link>
+            </p>
+          </>
+        )}
       </div>
     </main>
   );

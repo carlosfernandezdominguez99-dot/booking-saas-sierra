@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/utils/cn";
 import { addDaysToDateString } from "@/lib/utils/timezone";
 import type { PublicBookingResult } from "@/lib/services/bookingService";
@@ -81,6 +82,7 @@ export function BookingWizard({
   initialDate,
   initialSlots,
   accountProfile,
+  replaceBookingId,
 }: {
   slug: string;
   businessId: string;
@@ -98,6 +100,12 @@ export function BookingWizard({
    * enseñárselos al cliente en el paso de confirmación.
    */
   accountProfile: BookingAccountProfile;
+  /**
+   * Si se llega aquí desde "Modificar" en "Mis citas", el id de la cita
+   * que hay que cancelar en cuanto esta nueva se cree con éxito — ver
+   * `createAccountBookingAction`.
+   */
+  replaceBookingId?: string | null;
 }) {
   // `initialServiceId` ya viene resuelto desde el servidor (Página →
   // `?servicio=` si es válido, o el único servicio si solo hay uno) — así
@@ -127,6 +135,7 @@ export function BookingWizard({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [bookingResult, setBookingResult] = useState<PublicBookingResult | null>(null);
+  const [replaceWarning, setReplaceWarning] = useState<string | null>(null);
 
   const selectedService = useMemo(
     () => services.find((s) => s.id === selectedServiceId) ?? null,
@@ -233,6 +242,7 @@ export function BookingWizard({
         startTime: selectedSlot.slotStart,
         employeeId: selectedSlot.employeeId ?? null,
         comment,
+        replaceBookingId,
       });
 
       if (res.error) {
@@ -248,6 +258,7 @@ export function BookingWizard({
 
       if (res.result) {
         setBookingResult(res.result);
+        setReplaceWarning(res.replaceWarning ?? null);
         setStep("done");
       }
     });
@@ -535,6 +546,11 @@ export function BookingWizard({
           <p className="text-xs text-ink-400">
             Te hemos enviado un email de confirmación con los detalles de tu cita.
           </p>
+          {replaceWarning && (
+            <Alert tone="error" className="text-left">
+              {replaceWarning}
+            </Alert>
+          )}
           <Link href={`/negocio/${slug}`} className="inline-block text-sm font-medium text-brand-600 hover:underline">
             Volver a la página de {businessName}
           </Link>

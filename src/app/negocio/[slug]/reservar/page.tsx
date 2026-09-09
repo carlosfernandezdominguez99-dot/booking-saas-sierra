@@ -13,7 +13,7 @@ import type { SlotWithEmployee } from "./actions";
 
 interface PageProps {
   params: { slug: string };
-  searchParams: { servicio?: string };
+  searchParams: { servicio?: string; reemplaza?: string };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -56,8 +56,17 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
     }
   }
 
-  const redirectQuery = queryServiceId ? `?servicio=${encodeURIComponent(queryServiceId)}` : "";
-  const redirectTo = `/negocio/${params.slug}/reservar${redirectQuery}`;
+  // Si venía de "Modificar" (ver `CustomerAccountDashboard.tsx`), el id de
+  // la cita que hay que cancelar en cuanto la nueva se cree con éxito —
+  // se conserva también en `redirectTo` para no perderlo si hay que
+  // iniciar sesión primero.
+  const replaceBookingId = searchParams.reemplaza ?? null;
+
+  const redirectParams = new URLSearchParams();
+  if (queryServiceId) redirectParams.set("servicio", queryServiceId);
+  if (replaceBookingId) redirectParams.set("reemplaza", replaceBookingId);
+  const redirectQuery = redirectParams.toString();
+  const redirectTo = `/negocio/${params.slug}/reservar${redirectQuery ? `?${redirectQuery}` : ""}`;
 
   // Si el servicio inicial tiene 2+ empleados asignados, hace falta
   // elegir con quién antes de poder enseñar huecos (o "cualquiera
@@ -116,6 +125,7 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
             initialDate={today}
             initialSlots={initialSlots}
             accountProfile={accountProfile}
+            replaceBookingId={replaceBookingId}
           />
         )}
       </div>

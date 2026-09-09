@@ -139,7 +139,9 @@ function BookingRow({
             </div>
           ) : (
             <div className="flex gap-2">
-              <Link href={`/negocio/${booking.businessSlug}/reservar?servicio=${booking.serviceId}`}>
+              <Link
+                href={`/negocio/${booking.businessSlug}/reservar?servicio=${booking.serviceId}&reemplaza=${booking.id}`}
+              >
                 <Button type="button" variant="outline" size="sm">
                   Modificar
                 </Button>

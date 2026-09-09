@@ -11,6 +11,7 @@ import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
 import { createAccountBooking, getCustomerAccountProfile } from "@/lib/services/customerAccountService";
 import { sendBookingConfirmation } from "@/lib/whatsapp/whatsappService";
 import { sendBookingConfirmationEmail } from "@/lib/email/emailService";
+import { cancelBookingAction } from "@/app/mis-citas/actions";
 
 export interface GetSlotsActionInput {
   businessId: string;
@@ -82,11 +83,25 @@ export interface CreateAccountBookingActionInput {
   /** El empleado con el que se reserva — el que venía ya en el hueco elegido (`SlotWithEmployee.employeeId`). */
   employeeId?: string | null;
   comment?: string;
+  /**
+   * Si se viene de "Modificar" una cita (`CustomerAccountDashboard.tsx`),
+   * el id de esa cita anterior — se cancela automáticamente en cuanto
+   * esta nueva se crea con éxito, para no dejar las dos activas a la vez.
+   */
+  replaceBookingId?: string | null;
 }
 
 export interface CreateAccountBookingActionResult {
   result?: PublicBookingResult;
   error?: string;
+  /**
+   * Solo si venía de "Modificar" y la cita nueva se creó bien pero no se
+   * pudo cancelar la anterior (p. ej. la política de cancelación de ese
+   * negocio ya no lo permite a esta hora) — la reserva nueva es válida
+   * igualmente, esto es solo un aviso para que el cliente sepa que tiene
+   * que cancelar la anterior él mismo o avisar al negocio.
+   */
+  replaceWarning?: string;
 }
 
 /**
@@ -184,7 +199,21 @@ export async function createAccountBookingAction(
       // No-op: best-effort.
     }
 
-    return { result };
+    // Si venía de "Modificar", cancela la cita anterior ahora que la
+    // nueva ya está creada — nunca al revés (si se cancelara primero y
+    // luego fallara la creación de la nueva, el cliente se quedaría sin
+    // ninguna). Reutiliza `cancelBookingAction` entero (mismo email de
+    // cancelación y misma reoferta a la lista de espera que al cancelar
+    // desde "Mis citas") en vez de duplicar esa lógica aquí.
+    let replaceWarning: string | undefined;
+    if (input.replaceBookingId) {
+      const cancelRes = await cancelBookingAction(input.replaceBookingId);
+      if (cancelRes.error) {
+        replaceWarning = `Se creó la nueva cita, pero no se pudo cancelar la anterior automáticamente: ${cancelRes.error}`;
+      }
+    }
+
+    return { result, replaceWarning };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "No se pudo crear la reserva. Inténtalo de nuevo." };
   }
