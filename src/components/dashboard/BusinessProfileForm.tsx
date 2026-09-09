@@ -74,7 +74,7 @@ export function BusinessProfileForm({ initialProfile }: { initialProfile: Profil
           onChange={(e) => patch({ managerDisplayName: e.target.value })}
         />
         <p className="mt-1 text-xs text-ink-400">
-          Así te ve el cliente al elegir "con quién" si el negocio también tiene empleados.
+          Así te ve el cliente al elegir &quot;con quién&quot; si el negocio también tiene empleados.
         </p>
       </div>
 

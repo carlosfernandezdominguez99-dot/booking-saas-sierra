@@ -162,7 +162,7 @@ function ProfileStep({
           onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
         />
         <p className="mt-1 text-xs text-ink-400">
-          Así el cliente podrá pedir "cómo llegar" desde su cita.
+          Así el cliente podrá pedir &quot;cómo llegar&quot; desde su cita.
         </p>
       </div>
 
