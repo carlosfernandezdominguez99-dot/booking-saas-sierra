@@ -44,7 +44,7 @@ export default async function EmpleadosPage() {
         <CardDescription className="mb-4">
           Da de alta a tus empleados, marca qué servicios hace cada uno, y — si quieres que tengan su
           propio acceso para ver solo su agenda — invítalos por email. Cada empleado con acceso propio
-          gestiona su propio horario desde "Horario".
+          gestiona su propio horario desde “Horario”.
         </CardDescription>
         <EmployeesManager
           initialEmployees={employees}
