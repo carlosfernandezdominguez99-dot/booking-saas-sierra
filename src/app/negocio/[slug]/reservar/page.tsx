@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
-import { getAvailableSlots, type AvailableSlot } from "@/lib/services/availabilityService";
+import { getAvailableSlots } from "@/lib/services/availabilityService";
 import { todayInTimezone } from "@/lib/utils/timezone";
 import { BookingWizard } from "@/components/public/BookingWizard";
 import { CustomerAuthForm } from "@/components/public/CustomerAuthForm";
 import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
 import { getCustomerAccountProfile } from "@/lib/services/customerAccountService";
+import type { SlotWithEmployee } from "./actions";
 
 interface PageProps {
   params: { slug: string };
@@ -58,14 +59,30 @@ export default async function ReservarPage({ params, searchParams }: PageProps) 
   const redirectQuery = queryServiceId ? `?servicio=${encodeURIComponent(queryServiceId)}` : "";
   const redirectTo = `/negocio/${params.slug}/reservar${redirectQuery}`;
 
-  let initialSlots: AvailableSlot[] = [];
-  if (effectiveServiceId) {
+  // Si el servicio inicial tiene 2+ empleados asignados, hace falta
+  // elegir con quién antes de poder enseñar huecos (o "cualquiera
+  // disponible", que el propio asistente resuelve en el cliente) — así
+  // que no se piden huecos aquí todavía, se deja que el asistente
+  // arranque en el paso "Elige con quién". Con exactamente 1 empleado
+  // asignado no hace falta preguntar nada — se reserva directamente con
+  // ese, como si no hubiera paso de elegir. Sin ninguno asignado (negocio
+  // sin empleados, o este servicio en concreto sin asignar), funciona
+  // igual que siempre: los huecos del horario general.
+  const effectiveService = services.find((s) => s.id === effectiveServiceId) ?? null;
+  const needsEmployeeStep = Boolean(effectiveService && effectiveService.employees.length >= 2);
+  const singleEmployeeId =
+    effectiveService && effectiveService.employees.length === 1 ? effectiveService.employees[0].id : null;
+
+  let initialSlots: SlotWithEmployee[] = [];
+  if (effectiveServiceId && !needsEmployeeStep) {
     try {
-      initialSlots = await getAvailableSlots(supabase, {
+      const slots = await getAvailableSlots(supabase, {
         businessId: business.id,
         serviceId: effectiveServiceId,
         date: today,
+        employeeId: singleEmployeeId,
       });
+      initialSlots = slots.map((slot) => ({ ...slot, employeeId: singleEmployeeId ?? undefined }));
     } catch {
       initialSlots = [];
     }

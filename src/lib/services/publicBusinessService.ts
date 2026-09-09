@@ -10,10 +10,21 @@ export type PublicBusiness = Pick<
   "id" | "name" | "description" | "logo_url" | "city" | "business_type" | "timezone"
 >;
 
+export type PublicEmployee = Pick<Database["public"]["Tables"]["employees"]["Row"], "id" | "name" | "photo_url">;
+
 export type PublicService = Pick<
   Database["public"]["Tables"]["services"]["Row"],
   "id" | "name" | "description" | "price_cents" | "duration_minutes"
->;
+> & {
+  /**
+   * Empleados activos asignados a este servicio (vacío si el negocio no
+   * usa empleados, o si a este servicio en concreto no se le asignó
+   * ninguno). Con 0 empleados, reservar sigue funcionando exactamente
+   * igual que siempre (horario/hueco general del negocio, sin pedir
+   * elegir a nadie) — solo con 1+ se enseña el paso "Elige con quién".
+   */
+  employees: PublicEmployee[];
+};
 
 /**
  * Negocio + servicios activos vistos desde la página pública (sin sesión,
@@ -34,14 +45,56 @@ export async function getPublicBusinessBySlug(
 
   if (!business) return null;
 
-  const { data: services } = (await supabase
+  const { data: servicesData } = (await supabase
     .from("services")
     .select("id, name, description, price_cents, duration_minutes")
     .eq("business_id", business.id)
     .eq("active", true)
     .order("position", { ascending: true })) as unknown as { data: PublicService[] | null };
 
-  return { business, services: services ?? [] };
+  const services = servicesData ?? [];
+
+  // Empleados activos + qué servicios hace cada uno — dos consultas
+  // planas + merge en memoria (mismo motivo de siempre: los tipos de
+  // Supabase están escritos a mano, sin metadatos de relaciones para
+  // selects anidados). Se traen de una vez para todos los servicios del
+  // negocio, no uno por servicio.
+  if (services.length > 0) {
+    const { data: employees } = (await supabase
+      .from("employees")
+      .select("id, name, photo_url")
+      .eq("business_id", business.id)
+      .eq("active", true)) as unknown as { data: PublicEmployee[] | null };
+
+    if (employees && employees.length > 0) {
+      const employeeIds = employees.map((e) => e.id);
+      const { data: assignments } = (await (supabase.from("employee_services") as any)
+        .select("employee_id, service_id")
+        .in("employee_id", employeeIds)
+        .in(
+          "service_id",
+          services.map((s) => s.id),
+        )) as unknown as { data: { employee_id: string; service_id: string }[] | null };
+
+      const employeeById = new Map(employees.map((e) => [e.id, e]));
+      const employeeIdsByService = new Map<string, string[]>();
+      for (const row of assignments ?? []) {
+        const list = employeeIdsByService.get(row.service_id) ?? [];
+        list.push(row.employee_id);
+        employeeIdsByService.set(row.service_id, list);
+      }
+
+      for (const service of services) {
+        service.employees = (employeeIdsByService.get(service.id) ?? [])
+          .map((id) => employeeById.get(id))
+          .filter((e): e is PublicEmployee => Boolean(e));
+      }
+    } else {
+      for (const service of services) service.employees = [];
+    }
+  }
+
+  return { business, services };
 }
 
 export type PartnerBusiness = Pick<Database["public"]["Tables"]["businesses"]["Row"], "id" | "name" | "slug" | "logo_url">;

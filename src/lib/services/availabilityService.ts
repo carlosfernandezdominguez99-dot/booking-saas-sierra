@@ -56,3 +56,43 @@ export async function getAvailableSlots(
 
   return (data ?? []).map((slot) => ({ slotStart: slot.slot_start, slotEnd: slot.slot_end }));
 }
+
+export interface AvailableSlotWithEmployee extends AvailableSlot {
+  /** Qué empleado concreto ofrece este hueco — el que se reserva de verdad si se elige. */
+  employeeId: string;
+}
+
+/**
+ * "Cualquiera disponible": pide los huecos de CADA empleado elegible por
+ * separado (`get_available_slots` ya sabe hacerlo uno a uno) y los junta
+ * en una sola lista de horas, sin duplicar una misma hora si varios
+ * empleados la tienen libre — se queda con el primero de la lista
+ * (`employeeIds` ya viene en el orden en que se quiera priorizar) para
+ * cada hora repetida. Así la persona que reserva solo ve "a qué horas hay
+ * hueco" (como si no hubiera empleados), pero la reserva se crea siempre
+ * con un empleado concreto y libre de verdad — nunca con `employee_id`
+ * nulo, que rompería la garantía de no-solape (ver el comentario en
+ * `0018_employees_feature.sql`).
+ */
+export async function getAvailableSlotsAnyEmployee(
+  client: TypedClient,
+  params: { businessId: string; serviceId: string; date: string; employeeIds: string[] },
+): Promise<AvailableSlotWithEmployee[]> {
+  const perEmployee = await Promise.all(
+    params.employeeIds.map(async (employeeId) => ({
+      employeeId,
+      slots: await getAvailableSlots(client, { ...params, employeeId }),
+    })),
+  );
+
+  const byStart = new Map<string, AvailableSlotWithEmployee>();
+  for (const { employeeId, slots } of perEmployee) {
+    for (const slot of slots) {
+      if (!byStart.has(slot.slotStart)) {
+        byStart.set(slot.slotStart, { ...slot, employeeId });
+      }
+    }
+  }
+
+  return [...byStart.values()].sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+}

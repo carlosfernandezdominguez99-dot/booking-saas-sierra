@@ -222,6 +222,13 @@ export interface CreateAccountBookingParams {
   serviceId: string;
   /** ISO timestamptz del hueco elegido (debe coincidir con un `slotStart` de `getAvailableSlots`). */
   startTime: string;
+  /**
+   * Con qué empleado — el elegido a mano, o el que resolvió
+   * `getAvailableSlotsAnyEmployee` si se dejó en "cualquiera disponible".
+   * `null`/ausente para negocios que no usan empleados (comportamiento de
+   * siempre).
+   */
+  employeeId?: string | null;
   comment?: string | null;
 }
 
@@ -243,6 +250,7 @@ export async function createAccountBooking(
     p_business_id: params.businessId,
     p_service_id: params.serviceId,
     p_start_time: params.startTime,
+    p_employee_id: params.employeeId ?? null,
     p_comment: params.comment ?? null,
   })) as unknown as {
     data:

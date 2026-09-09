@@ -90,7 +90,7 @@ export async function getPrimaryBusinessForUser(
   // tocar todas las llamadas existentes (`ensureBusinessForUser` sigue
   // pasando `user.id`).
   _userId: string,
-): Promise<{ role: string; business: BusinessRow } | null> {
+): Promise<{ role: string; employeeId: string | null; employeeName: string | null; business: BusinessRow } | null> {
   // Antes esto eran dos consultas secuenciadas (`business_members` y
   // luego `businesses`): dos idas y vueltas de red a Supabase en CADA
   // página del panel, porque `requireBusinessContext` pasa por aquí
@@ -103,7 +103,7 @@ export async function getPrimaryBusinessForUser(
   // `availabilityService.ts`/`bookingService.ts` — ver el comentario
   // detallado allí.
   const { data, error } = (await (client.rpc as any)("get_my_primary_business")) as unknown as {
-    data: ({ role: string } & BusinessRow)[] | null;
+    data: ({ role: string; employee_id: string | null; employee_name: string | null } & BusinessRow)[] | null;
     error: { message: string } | null;
   };
 
@@ -112,8 +112,13 @@ export async function getPrimaryBusinessForUser(
   const row = data?.[0];
   if (!row) return null;
 
-  const { role, ...business } = row;
-  return { role, business: business as unknown as BusinessRow };
+  const { role, employee_id, employee_name, ...business } = row;
+  return {
+    role,
+    employeeId: employee_id,
+    employeeName: employee_name,
+    business: business as unknown as BusinessRow,
+  };
 }
 
 /**
@@ -132,7 +137,7 @@ export async function getPrimaryBusinessForUser(
 export async function ensureBusinessForUser(
   client: TypedClient,
   user: { id: string; user_metadata?: Record<string, unknown> | null },
-): Promise<{ role: string; business: BusinessRow } | null> {
+): Promise<{ role: string; employeeId: string | null; employeeName: string | null; business: BusinessRow } | null> {
   const existing = await getPrimaryBusinessForUser(client, user.id);
   if (existing) return existing;
 

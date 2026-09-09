@@ -16,15 +16,22 @@ const MAX_RANGES_PER_DAY = 3;
  *
  * `onSaved` es opcional: el asistente lo usa para avanzar al siguiente
  * paso tras un guardado correcto; la página de horarios no lo necesita.
+ *
+ * `employeeId` es opcional: si se pasa, guarda el horario de ESE empleado
+ * en vez del horario general del negocio (mismo componente, reutilizado
+ * tanto en `/dashboard/horarios` como en
+ * `/dashboard/empleados/[employeeId]/horario`).
  */
 export function HoursEditor({
   initialHours,
   onSaved,
   submitLabel = "Guardar horario",
+  employeeId,
 }: {
   initialHours: WeeklyHoursInput;
   onSaved?: () => void;
   submitLabel?: string;
+  employeeId?: string;
 }) {
   const [hours, setHours] = useState(initialHours);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +80,7 @@ export function HoursEditor({
     setSuccess(false);
 
     startTransition(async () => {
-      const result = await saveWeeklyHoursAction(hours);
+      const result = await saveWeeklyHoursAction(hours, employeeId);
       if (result.error) {
         setError(result.error);
         return;

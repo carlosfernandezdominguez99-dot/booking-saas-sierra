@@ -740,6 +740,82 @@ de `0016`).
 
 ---
 
+## ✅ Fase 8.1 — Empleados: acceso propio, calendario independiente y selección al reservar
+
+Pedido explícito de Carlos: "si un negocio tiene varios empleados debes
+poder seleccionar con qué empleados quieres la cita, y tener calendarios
+independientes, recordatorios donde ponga el negocio y el empleado con el
+que tienes la cita". Al preguntarle los detalles, confirmó: cada empleado
+tiene su propio acceso (login), los servicios se asignan por empleado (no
+todos hacen de todo), cada uno tiene su propio horario (no comparten el
+horario general del negocio), y al reservar se puede elegir "cualquiera
+disponible" además de un empleado concreto.
+
+La base de datos ya traía preparada de fases anteriores buena parte de la
+arquitectura (tablas `employees`/`employee_services`, columna
+`employee_id` en horarios/bloqueos/reservas, y las funciones de
+disponibilidad ya aceptaban un empleado) — esta fase completa lo que
+faltaba: invitaciones con acceso propio, permisos por rol y toda la
+interfaz, tanto en el panel como en la reserva pública.
+
+**Un negocio que nunca da de alta empleados sigue funcionando exactamente
+igual que hasta ahora** — no se le enseña nada nuevo, ni se le pide elegir
+a nadie. Incluso con empleados dados de alta, un servicio sin ninguno
+asignado reserva igual que siempre (horario general).
+
+**Implementado:**
+
+- `supabase/migrations/0018_employees_feature.sql` (nueva, **hay que
+  ejecutarla en el SQL Editor**, después de `0017`) — entre otras cosas:
+  - Cada miembro del negocio (`business_members`) puede quedar enlazado a
+    un empleado concreto (`employee_id`); un miembro con rol "empleado"
+    siempre tiene que estar enlazado a uno (no puede quedar suelto).
+  - Reglas de acceso (RLS) repartidas por rol: el propietario sigue
+    gestionando todo, y cada empleado solo puede ver/editar su propio
+    horario, sus bloqueos y sus propias citas — nunca los de un
+    compañero.
+  - Tabla `employee_invites` + dos funciones para el flujo de invitación
+    por email, de un solo uso (mismo patrón que ya se usaba para las
+    cuentas de cliente y la lista de espera).
+  - La reserva y la lista de espera (incluida la reoferta automática al
+    liberarse un hueco) pasan a tener en cuenta con qué empleado
+    concreto se reserva, para que la base de datos nunca deje solapar dos
+    citas de un mismo empleado.
+- **Panel → Empleados** (`/dashboard/empleados`, antes "Próximamente";
+  visible solo para el propietario del negocio):
+  - `src/components/dashboard/EmployeesManager.tsx` — alta de empleados,
+    activar/desactivar, elegir qué servicios hace cada uno, e invitarlo
+    por email (con el estado de la invitación: pendiente/aceptada/
+    revocada). Borrar un empleado con citas ya agendadas está bloqueado
+    (hay que desactivarlo en su lugar).
+  - `/dashboard/empleados/[id]/horario` — el horario semanal de ese
+    empleado en concreto, con el mismo componente que ya se usaba para el
+    horario general del negocio.
+- **Invitación** (`/invitacion/[token]`) — página pública donde el
+  empleado invitado crea su cuenta (o inicia sesión si ya tenía una) y
+  queda enlazado automáticamente al negocio que le invitó.
+- **Acceso de empleado**: al entrar con una cuenta de empleado, el menú
+  del panel se reduce a lo suyo (agenda, su horario) — Servicios,
+  Estadísticas, Lista de espera y Configuración quedan solo para el
+  propietario. Se ve "Como {nombre}" bajo el nombre del negocio para que
+  quede claro con qué cuenta se ha entrado.
+- **Reserva pública**: si el servicio elegido tiene 2 o más empleados
+  asignados, el asistente añade un paso "¿Con quién quieres la cita?"
+  (con la opción "Cualquiera disponible"); con exactamente 1 empleado
+  asignado se reserva directamente con ese, sin preguntar nada; sin
+  ninguno, como siempre. El email de confirmación y el aviso de WhatsApp
+  (todavía en mock) dicen ahora también con qué empleado es la cita.
+
+**Limitación conocida, aceptada para no alargar esta fase:** el nombre
+del empleado solo aparece en la confirmación de la reserva — los avisos
+de cancelación y de oferta de lista de espera, de momento, no lo
+mencionan (si hace falta, es un cambio pequeño para más adelante).
+
+**⚠️ Antes de dar esto por bueno:** ejecuta `0018_employees_feature.sql`
+en el SQL Editor de Supabase (después de `0017`).
+
+---
+
 ## ⏳ Próximas fases
 
 - [ ] Fase 9 — Testing + seguridad + revisión final

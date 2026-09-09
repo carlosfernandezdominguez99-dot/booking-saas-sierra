@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { DASHBOARD_NAV_ITEMS } from "./nav-items";
+import { navItemsForRole } from "./nav-items";
 import { Icon } from "./Icon";
+import type { BusinessMemberRole } from "@/types/database.types";
 
-export function Sidebar({ businessName }: { businessName: string }) {
+export function Sidebar({
+  businessName,
+  role,
+  employeeName,
+}: {
+  businessName: string;
+  role: BusinessMemberRole;
+  employeeName?: string | null;
+}) {
   const pathname = usePathname();
+  const navItems = navItemsForRole(role);
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-100 bg-white px-4 py-6 md:flex">
@@ -16,6 +26,9 @@ export function Sidebar({ businessName }: { businessName: string }) {
           Zoria<span className="text-brand-500">Booking</span>
         </p>
         <p className="mt-1 truncate text-xs text-ink-500">{businessName}</p>
+        {role === "staff" && employeeName && (
+          <p className="mt-0.5 truncate text-xs font-medium text-brand-600">Como {employeeName}</p>
+        )}
       </div>
 
       {/*
@@ -29,7 +42,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
         seguro dejar el prefetch activado.
       */}
       <nav className="flex flex-1 flex-col gap-1">
-        {DASHBOARD_NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = pathname?.startsWith(item.href);
           return (
             <Link

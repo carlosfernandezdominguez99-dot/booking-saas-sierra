@@ -10,15 +10,20 @@ type BusinessHoursInsert = Database["public"]["Tables"]["business_hours"]["Inser
 const HOURS_COLUMNS = "id, business_id, employee_id, day_of_week, start_time, end_time, created_at";
 
 /**
- * Solo gestiona los horarios "generales" del negocio (`employee_id IS
- * NULL`). Los horarios específicos por empleado son de una fase posterior.
+ * Gestiona los horarios "generales" del negocio (`employee_id` nulo,
+ * comportamiento de siempre) o, si se pasa `employeeId`, el horario
+ * propio de ESE empleado — misma tabla, mismo formulario
+ * (`HoursEditor`), solo cambia el filtro.
  */
-export async function listBusinessHours(client: TypedClient, businessId: string): Promise<BusinessHoursRow[]> {
-  const { data, error } = (await client
-    .from("business_hours")
-    .select(HOURS_COLUMNS)
-    .eq("business_id", businessId)
-    .is("employee_id", null)
+export async function listBusinessHours(
+  client: TypedClient,
+  businessId: string,
+  employeeId?: string | null,
+): Promise<BusinessHoursRow[]> {
+  let query = client.from("business_hours").select(HOURS_COLUMNS).eq("business_id", businessId);
+  query = employeeId ? query.eq("employee_id", employeeId) : query.is("employee_id", null);
+
+  const { data, error } = (await query
     .order("day_of_week", { ascending: true })
     .order("start_time", { ascending: true })) as unknown as {
     data: BusinessHoursRow[] | null;
@@ -30,21 +35,22 @@ export async function listBusinessHours(client: TypedClient, businessId: string)
 }
 
 /**
- * Sustituye el horario semanal completo del negocio: borra las filas
- * generales existentes y crea una fila por cada tramo de cada día abierto
- * (un día con jornada partida genera varias filas con el mismo
- * `day_of_week`). Es más simple y menos propenso a errores que calcular un
- * diff tramo a tramo, y el formulario siempre envía la semana entera.
+ * Sustituye el horario semanal completo (del negocio, o de un empleado
+ * concreto si se pasa `employeeId`): borra las filas existentes de ese
+ * mismo ámbito y crea una fila por cada tramo de cada día abierto (un día
+ * con jornada partida genera varias filas con el mismo `day_of_week`). Es
+ * más simple y menos propenso a errores que calcular un diff tramo a
+ * tramo, y el formulario siempre envía la semana entera.
  */
 export async function replaceBusinessHours(
   client: TypedClient,
   businessId: string,
   hours: WeeklyHoursInput,
+  employeeId?: string | null,
 ): Promise<void> {
-  const { error: deleteError } = await (client.from("business_hours") as any)
-    .delete()
-    .eq("business_id", businessId)
-    .is("employee_id", null);
+  let deleteQuery = (client.from("business_hours") as any).delete().eq("business_id", businessId);
+  deleteQuery = employeeId ? deleteQuery.eq("employee_id", employeeId) : deleteQuery.is("employee_id", null);
+  const { error: deleteError } = await deleteQuery;
 
   if (deleteError) throw deleteError;
 
@@ -53,6 +59,7 @@ export async function replaceBusinessHours(
     .flatMap((day) =>
       day.ranges.map((range) => ({
         business_id: businessId,
+        employee_id: employeeId ?? null,
         day_of_week: day.dayOfWeek,
         start_time: `${range.startTime}:00`,
         end_time: `${range.endTime}:00`,

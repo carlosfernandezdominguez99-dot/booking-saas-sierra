@@ -31,6 +31,8 @@ export interface BookingConfirmationPayload {
   businessName: string;
   serviceName: string;
   startTimeIso: string;
+  /** Con qué empleado, si el negocio los usa y se asignó uno concreto. */
+  employeeName?: string | null;
 }
 
 export interface BookingReminderPayload extends BookingConfirmationPayload {
@@ -79,7 +81,7 @@ export async function sendBookingConfirmation(
 ): Promise<WhatsappResult> {
   const message =
     `Hola ${payload.customerName}, tu reserva en ${payload.businessName} está confirmada.\n` +
-    `Servicio: ${payload.serviceName}\nFecha: ${payload.startTimeIso}`;
+    `Servicio: ${payload.serviceName}${payload.employeeName ? ` con ${payload.employeeName}` : ""}\nFecha: ${payload.startTimeIso}`;
   return sendWhatsappMessage(payload.toPhone, message);
 }
 

@@ -39,6 +39,8 @@ export interface BookingConfirmationEmailPayload {
   startTimeIso: string;
   /** Zona horaria del negocio (p. ej. "Europe/Madrid") — la hora se muestra en esta zona, nunca en UTC. */
   timezone: string;
+  /** Con qué empleado, si el negocio los usa y se asignó uno concreto. */
+  employeeName?: string | null;
 }
 
 export interface CancellationEmailPayload {
@@ -59,6 +61,14 @@ export interface WaitlistOfferEmailPayload {
   timezone: string;
   /** Enlace público de un solo uso para aceptar/rechazar. */
   respondUrl: string;
+}
+
+export interface EmployeeInviteEmailPayload {
+  toEmail: string;
+  businessName: string;
+  employeeName: string;
+  /** Enlace público de un solo uso para aceptar la invitación. */
+  acceptUrl: string;
 }
 
 export interface WaitlistJoinConfirmationEmailPayload {
@@ -143,7 +153,7 @@ export async function sendBookingConfirmationEmail(
     "¡Reserva confirmada!",
     `<p>Hola ${payload.customerName},</p>
      <p>Tu reserva en <strong>${payload.businessName}</strong> está confirmada:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>`,
+     <p><strong>${payload.serviceName}</strong>${payload.employeeName ? ` con ${payload.employeeName}` : ""}<br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>`,
   );
   return sendEmail(payload.toEmail, `Reserva confirmada en ${payload.businessName}`, html);
 }
@@ -169,6 +179,18 @@ export async function sendWaitlistOfferEmail(payload: WaitlistOfferEmailPayload)
      <p style="font-size:12px;color:#888;">Este enlace es de un solo uso y puede caducar si tarda demasiado en responderse.</p>`,
   );
   return sendEmail(payload.toEmail, `Hay un hueco libre en ${payload.businessName}`, html);
+}
+
+export async function sendEmployeeInviteEmail(payload: EmployeeInviteEmailPayload): Promise<EmailResult> {
+  const html = wrapEmail(
+    "Te han invitado a un equipo",
+    `<p>Hola ${payload.employeeName},</p>
+     <p><strong>${payload.businessName}</strong> te ha invitado a unirte como empleado en ZoriaBooking —
+     tendrás tu propio acceso para ver y gestionar tu agenda.</p>
+     <p><a href="${payload.acceptUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Aceptar invitación</a></p>
+     <p style="font-size:12px;color:#888;">Si no esperabas esta invitación, puedes ignorar este email.</p>`,
+  );
+  return sendEmail(payload.toEmail, `${payload.businessName} te ha invitado a su equipo en ZoriaBooking`, html);
 }
 
 export async function sendWaitlistJoinConfirmationEmail(

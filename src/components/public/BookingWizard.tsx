@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { addDaysToDateString } from "@/lib/utils/timezone";
-import type { AvailableSlot } from "@/lib/services/availabilityService";
 import type { PublicBookingResult } from "@/lib/services/bookingService";
-import { createAccountBookingAction, getSlotsAction } from "@/app/negocio/[slug]/reservar/actions";
+import {
+  createAccountBookingAction,
+  getSlotsAction,
+  type SlotWithEmployee,
+} from "@/app/negocio/[slug]/reservar/actions";
+
+export interface PublicEmployeeLite {
+  id: string;
+  name: string;
+  photo_url: string | null;
+}
 
 export interface PublicServiceLite {
   id: string;
@@ -16,9 +25,26 @@ export interface PublicServiceLite {
   description: string | null;
   price_cents: number;
   duration_minutes: number;
+  /** Vacío si el negocio no usa empleados, o si a este servicio no se le asignó ninguno. */
+  employees: PublicEmployeeLite[];
 }
 
-type Step = "service" | "datetime" | "contact" | "done";
+/**
+ * Selección de con quién reservar: `null` = todavía sin elegir (o negocio
+ * sin empleados, donde nunca se pide), `"any"` = "cualquiera disponible",
+ * o el id de un empleado concreto.
+ */
+type EmployeeSelection = string | "any" | null;
+
+type Step = "service" | "employee" | "datetime" | "contact" | "done";
+
+const STEP_LABEL: Record<Step, string> = {
+  service: "Servicio",
+  employee: "Empleado",
+  datetime: "Fecha y hora",
+  contact: "Confirmar",
+  done: "Confirmar",
+};
 
 const DAYS_AHEAD = 30;
 
@@ -63,7 +89,7 @@ export function BookingWizard({
   services: PublicServiceLite[];
   initialServiceId: string | null;
   initialDate: string;
-  initialSlots: AvailableSlot[];
+  initialSlots: SlotWithEmployee[];
   /**
    * Nombre/email/teléfono de la cuenta con la que se ha iniciado sesión —
    * la página ya no deja llegar hasta aquí sin cuenta (Fase 7.4). Se usan
@@ -77,14 +103,25 @@ export function BookingWizard({
   // `?servicio=` si es válido, o el único servicio si solo hay uno) — así
   // los huecos iniciales (`initialSlots`) siempre corresponden al
   // servicio con el que arranca el asistente, sin duplicar esa lógica
-  // aquí también.
-  const [step, setStep] = useState<Step>(initialServiceId ? "datetime" : "service");
+  // aquí también. Igual con el empleado: si el servicio inicial tiene
+  // exactamente 1 asignado, la página ya lo resolvió y lo trae puesto en
+  // cada hueco de `initialSlots` — con 2+ hace falta preguntar (paso
+  // "employee"), con 0 no hay nada que preguntar.
+  const initialService = services.find((s) => s.id === initialServiceId) ?? null;
+  const initialEmployeeCount = initialService?.employees.length ?? 0;
+
+  const [step, setStep] = useState<Step>(
+    !initialServiceId ? "service" : initialEmployeeCount >= 2 ? "employee" : "datetime",
+  );
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(initialServiceId);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<EmployeeSelection>(
+    initialEmployeeCount === 1 ? initialService!.employees[0].id : null,
+  );
   const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [slots, setSlots] = useState<AvailableSlot[]>(initialSlots);
+  const [slots, setSlots] = useState<SlotWithEmployee[]>(initialSlots);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [isLoadingSlots, startSlotsTransition] = useTransition();
-  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SlotWithEmployee | null>(null);
 
   const [comment, setComment] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -96,16 +133,42 @@ export function BookingWizard({
     [services, selectedServiceId],
   );
 
+  const selectedEmployee = useMemo(
+    () =>
+      typeof selectedEmployeeId === "string" && selectedEmployeeId !== "any"
+        ? (selectedService?.employees.find((e) => e.id === selectedEmployeeId) ?? null)
+        : null,
+    [selectedService, selectedEmployeeId],
+  );
+
+  // Con quién se reservaría de verdad si se confirma el hueco elegido —
+  // para enseñarlo en el paso de confirmación y en la pantalla final.
+  const selectedSlotEmployee = useMemo(
+    () => selectedService?.employees.find((e) => e.id === selectedSlot?.employeeId) ?? null,
+    [selectedService, selectedSlot],
+  );
+
+  const stepsForIndicator = useMemo<Step[]>(() => {
+    const employeeCount = selectedService?.employees.length ?? 0;
+    return employeeCount >= 2 ? ["service", "employee", "datetime", "contact"] : ["service", "datetime", "contact"];
+  }, [selectedService]);
+
   const days = useMemo(
     () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDaysToDateString(initialDate, i)),
     [initialDate],
   );
 
-  function loadSlots(serviceId: string, date: string) {
+  function loadSlots(serviceId: string, date: string, employeeSelection: EmployeeSelection) {
     setSlotsError(null);
     setSelectedSlot(null);
     startSlotsTransition(async () => {
-      const res = await getSlotsAction({ businessId, serviceId, date });
+      const service = services.find((s) => s.id === serviceId);
+      const employees = service?.employees ?? [];
+      const res = await getSlotsAction(
+        employeeSelection === "any"
+          ? { businessId, serviceId, date, anyOf: employees.map((e) => e.id) }
+          : { businessId, serviceId, date, employeeId: employeeSelection ?? undefined },
+      );
       if (res.error) setSlotsError(res.error);
       setSlots(res.slots);
     });
@@ -113,26 +176,47 @@ export function BookingWizard({
 
   // Ya se trajeron los huecos del día/servicio iniciales desde el
   // servidor (sin esta comprobación se pedirían otra vez de más al
-  // montar el componente). `useRef` en vez de `useMemo` porque necesita
+  // montar el componente) — pero eso solo pasó cuando el servicio tiene 0
+  // o 1 empleado asignado (con 2+, la página deja el paso "Elige con
+  // quién" para el cliente y no trae huecos todavía). Mientras el
+  // servicio elegido tenga 2+ empleados y no se haya elegido aún ninguno,
+  // no hay nada que pedir. `useRef` en vez de `useMemo` porque necesita
   // una identidad mutable estable entre renders — `useMemo` no lo
   // garantiza, es solo una optimización.
-  const didInitRef = useRef(false);
+  const consumedInitialSlotsRef = useRef(false);
   useEffect(() => {
     if (!selectedServiceId) return;
-    if (!didInitRef.current) {
-      didInitRef.current = true;
-      if (selectedServiceId === initialServiceId && selectedDate === initialDate) return;
+    const employees = services.find((s) => s.id === selectedServiceId)?.employees ?? [];
+    if (employees.length >= 2 && selectedEmployeeId === null) return;
+
+    if (!consumedInitialSlotsRef.current) {
+      consumedInitialSlotsRef.current = true;
+      if (selectedServiceId === initialServiceId && selectedDate === initialDate && employees.length <= 1) {
+        return;
+      }
     }
-    loadSlots(selectedServiceId, selectedDate);
+    loadSlots(selectedServiceId, selectedDate, selectedEmployeeId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedServiceId, selectedDate]);
+  }, [selectedServiceId, selectedDate, selectedEmployeeId]);
 
   function handleSelectService(serviceId: string) {
     setSelectedServiceId(serviceId);
+    const employees = services.find((s) => s.id === serviceId)?.employees ?? [];
+    if (employees.length >= 2) {
+      setSelectedEmployeeId(null);
+      setStep("employee");
+    } else {
+      setSelectedEmployeeId(employees.length === 1 ? employees[0].id : null);
+      setStep("datetime");
+    }
+  }
+
+  function handleSelectEmployee(employeeSelection: string | "any") {
+    setSelectedEmployeeId(employeeSelection);
     setStep("datetime");
   }
 
-  function handleSelectSlot(slot: AvailableSlot) {
+  function handleSelectSlot(slot: SlotWithEmployee) {
     setSelectedSlot(slot);
     setStep("contact");
   }
@@ -147,6 +231,7 @@ export function BookingWizard({
         businessId,
         serviceId: selectedService.id,
         startTime: selectedSlot.slotStart,
+        employeeId: selectedSlot.employeeId ?? null,
         comment,
       });
 
@@ -157,7 +242,7 @@ export function BookingWizard({
         // huecos recién pedidos, en vez de dejar al visitante reintentando
         // un hueco que ya no existe.
         setStep("datetime");
-        loadSlots(selectedService.id, selectedDate);
+        loadSlots(selectedService.id, selectedDate, selectedEmployeeId);
         return;
       }
 
@@ -180,7 +265,7 @@ export function BookingWizard({
     <div className="space-y-6">
       {step !== "done" && (
         <ol className="flex items-center justify-center gap-2 text-xs font-medium text-ink-400">
-          {(["service", "datetime", "contact"] as Step[]).map((s, i) => (
+          {stepsForIndicator.map((s, i) => (
             <li key={s} className="flex items-center gap-2">
               {i > 0 && <span className="h-px w-4 bg-ink-200" />}
               <span
@@ -189,7 +274,7 @@ export function BookingWizard({
                   step === s ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-500",
                 )}
               >
-                {s === "service" ? "Servicio" : s === "datetime" ? "Fecha y hora" : "Confirmar"}
+                {STEP_LABEL[s]}
               </span>
             </li>
           ))}
@@ -217,6 +302,65 @@ export function BookingWizard({
         </div>
       )}
 
+      {step === "employee" && selectedService && (
+        <div className="space-y-3">
+          <Card className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium text-ink-900">{selectedService.name}</p>
+              <p className="text-sm text-ink-500">
+                {selectedService.duration_minutes} min · {formatPrice(selectedService.price_cents)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep("service")}
+              className="shrink-0 text-sm font-medium text-brand-600 hover:underline"
+            >
+              Cambiar
+            </button>
+          </Card>
+
+          <p className="text-sm font-medium text-ink-700">¿Con quién quieres la cita?</p>
+
+          <button type="button" onClick={() => handleSelectEmployee("any")} className="block w-full text-left">
+            <Card className="flex items-center gap-3 transition-colors hover:border-ink-300">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-500">
+                ?
+              </div>
+              <div>
+                <p className="font-medium text-ink-900">Cualquiera disponible</p>
+                <p className="text-xs text-ink-500">Te asignamos a quien tenga hueco antes</p>
+              </div>
+            </Card>
+          </button>
+
+          {selectedService.employees.map((employee) => (
+            <button
+              key={employee.id}
+              type="button"
+              onClick={() => handleSelectEmployee(employee.id)}
+              className="block w-full text-left"
+            >
+              <Card className="flex items-center gap-3 transition-colors hover:border-ink-300">
+                {employee.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={employee.photo_url}
+                    alt=""
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-semibold text-ink-600">
+                    {employee.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <p className="font-medium text-ink-900">{employee.name}</p>
+              </Card>
+            </button>
+          ))}
+        </div>
+      )}
+
       {step === "datetime" && selectedService && (
         <div className="space-y-5">
           <Card className="flex items-center justify-between gap-4">
@@ -236,6 +380,24 @@ export function BookingWizard({
               </button>
             )}
           </Card>
+
+          {selectedService.employees.length >= 2 && (
+            <Card className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-400">Con</p>
+                <p className="font-medium text-ink-900">
+                  {selectedEmployeeId === "any" ? "Cualquiera disponible" : (selectedEmployee?.name ?? "—")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep("employee")}
+                className="shrink-0 text-sm font-medium text-brand-600 hover:underline"
+              >
+                Cambiar
+              </button>
+            </Card>
+          )}
 
           <div>
             <p className="mb-2 text-sm font-medium text-ink-700">Elige un día</p>
@@ -306,7 +468,10 @@ export function BookingWizard({
       {step === "contact" && selectedService && selectedSlot && (
         <div className="space-y-5">
           <Card className="space-y-1">
-            <p className="font-medium text-ink-900">{selectedService.name}</p>
+            <p className="font-medium text-ink-900">
+              {selectedService.name}
+              {selectedSlotEmployee ? ` con ${selectedSlotEmployee.name}` : ""}
+            </p>
             <p className="text-sm text-ink-500 capitalize">
               {formatDateLong(selectedDate, timezone)} · {formatSlotTime(selectedSlot.slotStart, timezone)}
             </p>
@@ -354,7 +519,8 @@ export function BookingWizard({
           <div>
             <h2 className="text-lg font-semibold text-ink-950">¡Reserva confirmada!</h2>
             <p className="mt-1 text-sm text-ink-500">
-              {bookingResult.serviceName} en {businessName}
+              {bookingResult.serviceName}
+              {selectedSlotEmployee ? ` con ${selectedSlotEmployee.name}` : ""} en {businessName}
             </p>
             <p className="text-sm font-medium capitalize text-ink-900">
               {new Date(bookingResult.startTime).toLocaleDateString("es-ES", {

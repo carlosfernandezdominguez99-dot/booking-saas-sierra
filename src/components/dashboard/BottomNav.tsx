@@ -5,29 +5,34 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { Icon } from "./Icon";
+import type { BusinessMemberRole } from "@/types/database.types";
 
 // Solo lo más usado va fijo abajo — el resto vive dentro de "Más" para que
 // la barra no se quede apretada ni se corten etiquetas en pantallas
-// estrechas.
-const PRIMARY_ITEMS = [
-  { href: "/dashboard/inicio", label: "Inicio", icon: "home" as const },
-  { href: "/dashboard/calendario", label: "Calendario", icon: "calendar" as const },
-  { href: "/dashboard/reservas", label: "Reservas", icon: "list" as const },
-  { href: "/dashboard/clientes", label: "Clientes", icon: "users" as const },
+// estrechas. `roles` opcional: sin él, se enseña a cualquier rol (mismo
+// significado que en `nav-items.ts`).
+const PRIMARY_ITEMS: { href: string; label: string; icon: Parameters<typeof Icon>[0]["name"]; roles?: BusinessMemberRole[] }[] = [
+  { href: "/dashboard/inicio", label: "Inicio", icon: "home" },
+  { href: "/dashboard/calendario", label: "Calendario", icon: "calendar" },
+  { href: "/dashboard/reservas", label: "Reservas", icon: "list" },
+  { href: "/dashboard/clientes", label: "Clientes", icon: "users" },
 ];
 
-const MORE_ITEMS = [
-  { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart" as const },
-  { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist" as const },
-  { href: "/dashboard/servicios", label: "Servicios", icon: "scissors" as const },
-  { href: "/dashboard/horarios", label: "Horarios", icon: "clock" as const },
-  { href: "/dashboard/empleados", label: "Empleados", icon: "user-group" as const },
-  { href: "/dashboard/configuracion", label: "Configuración", icon: "settings" as const },
+const MORE_ITEMS: { href: string; label: string; icon: Parameters<typeof Icon>[0]["name"]; roles?: BusinessMemberRole[] }[] = [
+  { href: "/dashboard/estadisticas", label: "Estadísticas", icon: "chart", roles: ["owner"] },
+  { href: "/dashboard/lista-espera", label: "Lista de espera", icon: "waitlist", roles: ["owner"] },
+  { href: "/dashboard/servicios", label: "Servicios", icon: "scissors", roles: ["owner"] },
+  { href: "/dashboard/horarios", label: "Horarios", icon: "clock" },
+  { href: "/dashboard/empleados", label: "Empleados", icon: "user-group", roles: ["owner"] },
+  { href: "/dashboard/configuracion", label: "Configuración", icon: "settings", roles: ["owner"] },
 ];
 
-export function BottomNav() {
+export function BottomNav({ role }: { role: BusinessMemberRole }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const primaryItems = PRIMARY_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const moreItems = MORE_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
 
   // Si el usuario navega (por ejemplo, tocando un enlace dentro del menú
   // "Más"), el menú se cierra solo en vez de quedar abierto de fondo.
@@ -35,7 +40,7 @@ export function BottomNav() {
     setOpen(false);
   }, [pathname]);
 
-  const moreActive = MORE_ITEMS.some((item) => pathname?.startsWith(item.href));
+  const moreActive = moreItems.some((item) => pathname?.startsWith(item.href));
 
   return (
     <>
@@ -50,7 +55,7 @@ export function BottomNav() {
 
       {open && (
         <div className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-lg md:hidden">
-          {MORE_ITEMS.map((item) => {
+          {moreItems.map((item) => {
             const active = pathname?.startsWith(item.href);
             return (
               <Link
@@ -72,7 +77,7 @@ export function BottomNav() {
       <nav
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-100 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        {PRIMARY_ITEMS.map((item) => {
+        {primaryItems.map((item) => {
           const active = pathname?.startsWith(item.href);
           return (
             <Link

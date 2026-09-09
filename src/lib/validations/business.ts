@@ -108,6 +108,15 @@ export const WEEK_DAYS: { dayOfWeek: number; label: string; short: string }[] = 
   { dayOfWeek: 0, label: "Domingo", short: "D" },
 ];
 
+// -----------------------------------------------------------------------
+// Empleados.
+// -----------------------------------------------------------------------
+export const employeeNameSchema = z.string().trim().min(2, "Introduce un nombre").max(80);
+
+export const inviteEmployeeSchema = z.object({
+  email: z.string().trim().email("Introduce un email válido"),
+});
+
 export function defaultWeeklyHours(): WeeklyHoursInput {
   return WEEK_DAYS.map(({ dayOfWeek }) => ({
     dayOfWeek,

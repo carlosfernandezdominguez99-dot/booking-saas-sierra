@@ -26,6 +26,9 @@ export async function requireBusinessContext(): Promise<{
   user: User;
   business: BusinessRow;
   role: BusinessMemberRole;
+  /** Solo si `role === "staff"`: el empleado que es este usuario. */
+  employeeId: string | null;
+  employeeName: string | null;
 }> {
   const supabase = await createClient();
 
@@ -48,5 +51,7 @@ export async function requireBusinessContext(): Promise<{
     user,
     business: context.business,
     role: context.role as BusinessMemberRole,
+    employeeId: context.employeeId,
+    employeeName: context.employeeName,
   };
 }

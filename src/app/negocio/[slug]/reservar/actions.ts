@@ -1,7 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getAvailableSlots, type AvailableSlot } from "@/lib/services/availabilityService";
+import {
+  getAvailableSlots,
+  getAvailableSlotsAnyEmployee,
+  type AvailableSlot,
+} from "@/lib/services/availabilityService";
 import type { PublicBookingResult } from "@/lib/services/bookingService";
 import { getCustomerSessionToken } from "@/lib/services/customerAuthSession";
 import { createAccountBooking, getCustomerAccountProfile } from "@/lib/services/customerAccountService";
@@ -13,6 +17,20 @@ export interface GetSlotsActionInput {
   serviceId: string;
   /** YYYY-MM-DD, en la zona horaria del negocio. */
   date: string;
+  /**
+   * Sin empleado (negocio que no los usa): `undefined`/`null`. Un
+   * empleado concreto: su id. "Cualquiera disponible" entre varios: la
+   * lista de ids elegibles para ese servicio, con `anyOf`.
+   */
+  employeeId?: string | null;
+  anyOf?: string[];
+}
+
+// Cada hueco lleva ya el empleado con el que se reservaría (si el negocio
+// usa empleados) — así, al elegir una hora, el asistente sabe con quién
+// reservar sin tener que volver a preguntar a la base de datos.
+export interface SlotWithEmployee extends AvailableSlot {
+  employeeId?: string;
 }
 
 // Un solo tipo con `slots` SIEMPRE presente (array vacío si hay error) en
@@ -23,23 +41,34 @@ export interface GetSlotsActionInput {
 // inferencia — mismo motivo por el que el resto del proyecto usa
 // `data ?? []` en vez de fiarse del estrechado de tipos.
 export interface GetSlotsActionResult {
-  slots: AvailableSlot[];
+  slots: SlotWithEmployee[];
   error?: string;
 }
 
 /**
  * Se llama directamente como función desde el cliente (no como `<form
- * action>`) cada vez que el visitante cambia de día en el selector de
- * fecha — igual que el resto de acciones "de lectura" del proyecto que se
- * invocan con `useTransition`. Sigue siendo de lectura pública (`anon`
- * conserva el `execute` de `get_available_slots`) — ver
+ * action>`) cada vez que el visitante cambia de día (o de empleado) en el
+ * asistente — igual que el resto de acciones "de lectura" del proyecto
+ * que se invocan con `useTransition`. Sigue siendo de lectura pública
+ * (`anon` conserva el `execute` de `get_available_slots`) — ver
  * `0014_require_account_booking.sql`, que solo revoca las de ESCRITURA.
  */
 export async function getSlotsAction(input: GetSlotsActionInput): Promise<GetSlotsActionResult> {
   try {
     const supabase = await createClient();
+
+    if (input.anyOf && input.anyOf.length > 0) {
+      const slots = await getAvailableSlotsAnyEmployee(supabase, {
+        businessId: input.businessId,
+        serviceId: input.serviceId,
+        date: input.date,
+        employeeIds: input.anyOf,
+      });
+      return { slots };
+    }
+
     const slots = await getAvailableSlots(supabase, input);
-    return { slots };
+    return { slots: slots.map((s) => ({ ...s, employeeId: input.employeeId ?? undefined })) };
   } catch {
     return { slots: [], error: "No se pudieron cargar los huecos disponibles. Inténtalo de nuevo." };
   }
@@ -50,6 +79,8 @@ export interface CreateAccountBookingActionInput {
   serviceId: string;
   /** ISO timestamptz del hueco elegido (debe ser uno de los `slotStart` devueltos por `getSlotsAction`). */
   startTime: string;
+  /** El empleado con el que se reserva — el que venía ya en el hueco elegido (`SlotWithEmployee.employeeId`). */
+  employeeId?: string | null;
   comment?: string;
 }
 
@@ -94,6 +125,7 @@ export async function createAccountBookingAction(
       businessId: input.businessId,
       serviceId: input.serviceId,
       startTime: input.startTime,
+      employeeId: input.employeeId ?? null,
       comment: comment || null,
     });
 
@@ -107,6 +139,17 @@ export async function createAccountBookingAction(
       .maybeSingle();
     const timezone = (businessRow?.timezone as string | undefined) ?? "Europe/Madrid";
 
+    // Nombre del empleado (si lo hay) para que el recordatorio diga con
+    // quién es la cita, no solo en qué negocio.
+    let employeeName: string | null = null;
+    if (input.employeeId) {
+      const { data: employeeRow } = await (supabase.from("employees") as any)
+        .select("name")
+        .eq("id", input.employeeId)
+        .maybeSingle();
+      employeeName = (employeeRow?.name as string | undefined) ?? null;
+    }
+
     // "Envío" de confirmación por WhatsApp — sigue siendo un mock que solo
     // deja un log (no hay cuenta de WhatsApp Business API conectada
     // todavía). Es un intento aparte, a propósito: si fallara, la reserva
@@ -119,6 +162,7 @@ export async function createAccountBookingAction(
         businessName: result.businessName,
         serviceName: result.serviceName,
         startTimeIso: result.startTime,
+        employeeName,
       });
     } catch {
       // No-op: best-effort.
@@ -134,6 +178,7 @@ export async function createAccountBookingAction(
         serviceName: result.serviceName,
         startTimeIso: result.startTime,
         timezone,
+        employeeName,
       });
     } catch {
       // No-op: best-effort.

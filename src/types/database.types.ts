@@ -38,6 +38,7 @@ export type NotificationChannel = "whatsapp" | "email" | "push";
 export type NotificationStatus = "pending" | "sent" | "failed";
 export type WaitlistStatus = "waiting" | "offered" | "accepted" | "rejected" | "expired";
 export type BusinessMemberRole = "owner" | "staff";
+export type EmployeeInviteStatus = "pending" | "accepted" | "revoked";
 
 export interface Database {
   public: {
@@ -138,6 +139,7 @@ export interface Database {
           business_id: string;
           user_id: string;
           role: BusinessMemberRole;
+          employee_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -145,6 +147,7 @@ export interface Database {
           business_id: string;
           user_id: string;
           role?: BusinessMemberRole;
+          employee_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -152,7 +155,44 @@ export interface Database {
           business_id?: string;
           user_id?: string;
           role?: BusinessMemberRole;
+          employee_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      employee_invites: {
+        Row: {
+          id: string;
+          business_id: string;
+          employee_id: string;
+          email: string;
+          token: string;
+          status: EmployeeInviteStatus;
+          expires_at: string;
+          created_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          employee_id: string;
+          email: string;
+          token?: string;
+          status?: EmployeeInviteStatus;
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          employee_id?: string;
+          email?: string;
+          token?: string;
+          status?: EmployeeInviteStatus;
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
         };
         Relationships: [];
       };
@@ -440,6 +480,7 @@ export interface Database {
           offered_start_time: string | null;
           offered_end_time: string | null;
           offered_at: string | null;
+          offered_employee_id: string | null;
           respond_token: string;
           created_at: string;
           updated_at: string;
@@ -454,6 +495,7 @@ export interface Database {
           offered_start_time?: string | null;
           offered_end_time?: string | null;
           offered_at?: string | null;
+          offered_employee_id?: string | null;
           respond_token?: string;
           created_at?: string;
           updated_at?: string;
@@ -468,6 +510,7 @@ export interface Database {
           offered_start_time?: string | null;
           offered_end_time?: string | null;
           offered_at?: string | null;
+          offered_employee_id?: string | null;
           respond_token?: string;
           created_at?: string;
           updated_at?: string;
@@ -643,6 +686,7 @@ export interface Database {
           p_business_id: string;
           p_service_id: string;
           p_start_time: string;
+          p_employee_id?: string | null;
           p_comment?: string | null;
         };
         Returns: {
@@ -688,6 +732,19 @@ export interface Database {
           next_offered_end_time: string | null;
           next_respond_token: string | null;
         }[];
+      };
+      get_employee_invite: {
+        Args: { p_token: string };
+        Returns: {
+          valid: boolean;
+          business_name: string | null;
+          employee_name: string | null;
+          email: string | null;
+        }[];
+      };
+      accept_employee_invite: {
+        Args: { p_token: string };
+        Returns: { ok: boolean; error: string | null; business_slug: string | null }[];
       };
     };
     Enums: Record<string, never>;
