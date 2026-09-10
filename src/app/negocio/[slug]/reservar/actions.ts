@@ -12,6 +12,7 @@ import { createAccountBooking, getCustomerAccountProfile } from "@/lib/services/
 import { sendBookingConfirmation } from "@/lib/whatsapp/whatsappService";
 import { sendBookingConfirmationEmail } from "@/lib/email/emailService";
 import { cancelBookingAction } from "@/app/mis-citas/actions";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/utils/rateLimit";
 
 export interface GetSlotsActionInput {
   businessId: string;
@@ -121,6 +122,12 @@ export interface CreateAccountBookingActionResult {
 export async function createAccountBookingAction(
   input: CreateAccountBookingActionInput,
 ): Promise<CreateAccountBookingActionResult> {
+  // Freno a acaparar huecos a base de crear reservas en bucle: 20 cada 10
+  // min por IP — de sobra para un cliente real cambiando de idea varias
+  // veces, no para un script.
+  const { allowed } = await checkRateLimit("reservar", { maxRequests: 20, windowSeconds: 10 * 60 });
+  if (!allowed) return { error: RATE_LIMIT_MESSAGE };
+
   const token = await getCustomerSessionToken();
   if (!token) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
 

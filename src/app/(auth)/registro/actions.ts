@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createBusinessForOwner } from "@/lib/services/businessService";
 import { registerSchema } from "@/lib/validations/auth";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/utils/rateLimit";
 
 export interface RegisterFormState {
   error?: string;
@@ -22,6 +23,10 @@ export async function registerAction(
     phone: String(formData.get("phone") ?? ""),
     businessType: String(formData.get("businessType") ?? ""),
   };
+
+  // Freno a crear cuentas en masa: 5 registros cada hora por IP.
+  const { allowed } = await checkRateLimit("registro", { maxRequests: 5, windowSeconds: 60 * 60 });
+  if (!allowed) return { error: RATE_LIMIT_MESSAGE };
 
   const parsed = registerSchema.safeParse(raw);
   if (!parsed.success) {

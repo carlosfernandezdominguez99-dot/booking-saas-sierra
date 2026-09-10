@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/waitlistService";
 import { sendWaitlistOffer } from "@/lib/whatsapp/whatsappService";
 import { sendBookingConfirmationEmail, sendWaitlistOfferEmail } from "@/lib/email/emailService";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 /**
  * Responde a una oferta de lista de espera desde el enlace público (sin
@@ -18,6 +19,13 @@ export async function respondToWaitlistOfferAction(
   token: string,
   accept: boolean,
 ): Promise<RespondToWaitlistOfferResult> {
+  // Freno a probar tokens de oferta al azar: 15 intentos cada 10 min por
+  // IP. Se trata igual que un enlace no encontrado (`not_found`) — no hay
+  // un resultado "límite alcanzado" en este tipo, y esto es lo bastante
+  // parecido (un cliente real nunca llega a repetirlo tantas veces).
+  const { allowed } = await checkRateLimit("lista-espera-responder", { maxRequests: 15, windowSeconds: 10 * 60 });
+  if (!allowed) return { result: "not_found" };
+
   const supabase = await createClient();
   const result = await respondToWaitlistOffer(supabase, token, accept);
 

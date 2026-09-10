@@ -148,6 +148,24 @@ function formatDateForEmail(iso: string, timezone: string): string {
   });
 }
 
+/**
+ * Escapa HTML antes de meter en la plantilla cualquier texto que venga de
+ * un usuario (nombre de cliente, del negocio, de un servicio o empleado) —
+ * sin esto, alguien podría poner de nombre algo como `<img src=x
+ * onerror=...>` y que se ejecutara en el cliente de correo de quien recibe
+ * el aviso (el propio negocio, otro cliente en la lista de espera...). Los
+ * enlaces (`respondUrl`, `acceptUrl`...) no lo necesitan: siempre los
+ * construye el propio servidor, nunca vienen de lo que escribió alguien.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function wrapEmail(title: string, bodyHtml: string): string {
   return `
     <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1e;">
@@ -165,9 +183,9 @@ export async function sendBookingConfirmationEmail(
     : "";
   const html = wrapEmail(
     "¡Reserva confirmada!",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Tu reserva en <strong>${payload.businessName}</strong> está confirmada:</p>
-     <p><strong>${payload.serviceName}</strong>${payload.employeeName ? ` con ${payload.employeeName}` : ""}<br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
+    `<p>Hola ${escapeHtml(payload.customerName)},</p>
+     <p>Tu reserva en <strong>${escapeHtml(payload.businessName)}</strong> está confirmada:</p>
+     <p><strong>${escapeHtml(payload.serviceName)}</strong>${payload.employeeName ? ` con ${escapeHtml(payload.employeeName)}` : ""}<br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
      ${directionsButton}`,
   );
   return sendEmail(payload.toEmail, `Reserva confirmada en ${payload.businessName}`, html);
@@ -176,9 +194,9 @@ export async function sendBookingConfirmationEmail(
 export async function sendCancellationEmail(payload: CancellationEmailPayload): Promise<EmailResult> {
   const html = wrapEmail(
     "Reserva cancelada",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Tu reserva en <strong>${payload.businessName}</strong> ha sido cancelada:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
+    `<p>Hola ${escapeHtml(payload.customerName)},</p>
+     <p>Tu reserva en <strong>${escapeHtml(payload.businessName)}</strong> ha sido cancelada:</p>
+     <p><strong>${escapeHtml(payload.serviceName)}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
      <p>Si quieres reservar otro momento, contacta con el negocio o vuelve a su página de reservas.</p>`,
   );
   return sendEmail(payload.toEmail, `Tu reserva en ${payload.businessName} ha sido cancelada`, html);
@@ -187,9 +205,9 @@ export async function sendCancellationEmail(payload: CancellationEmailPayload): 
 export async function sendWaitlistOfferEmail(payload: WaitlistOfferEmailPayload): Promise<EmailResult> {
   const html = wrapEmail(
     "¡Se ha liberado un hueco!",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Se ha liberado un hueco en <strong>${payload.businessName}</strong> que encaja con lo que pediste:</p>
-     <p><strong>${payload.serviceName}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
+    `<p>Hola ${escapeHtml(payload.customerName)},</p>
+     <p>Se ha liberado un hueco en <strong>${escapeHtml(payload.businessName)}</strong> que encaja con lo que pediste:</p>
+     <p><strong>${escapeHtml(payload.serviceName)}</strong><br/>${formatDateForEmail(payload.startTimeIso, payload.timezone)}</p>
      <p><a href="${payload.respondUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Responder ahora</a></p>
      <p style="font-size:12px;color:#888;">Este enlace es de un solo uso y puede caducar si tarda demasiado en responderse.</p>`,
   );
@@ -199,8 +217,8 @@ export async function sendWaitlistOfferEmail(payload: WaitlistOfferEmailPayload)
 export async function sendEmployeeInviteEmail(payload: EmployeeInviteEmailPayload): Promise<EmailResult> {
   const html = wrapEmail(
     "Te han invitado a un equipo",
-    `<p>Hola ${payload.employeeName},</p>
-     <p><strong>${payload.businessName}</strong> te ha invitado a unirte como empleado en ZoriaBooking —
+    `<p>Hola ${escapeHtml(payload.employeeName)},</p>
+     <p><strong>${escapeHtml(payload.businessName)}</strong> te ha invitado a unirte como empleado en ZoriaBooking —
      tendrás tu propio acceso para ver y gestionar tu agenda.</p>
      <p><a href="${payload.acceptUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Aceptar invitación</a></p>
      <p style="font-size:12px;color:#888;">Si no esperabas esta invitación, puedes ignorar este email.</p>`,
@@ -213,9 +231,9 @@ export async function sendWaitlistJoinConfirmationEmail(
 ): Promise<EmailResult> {
   const html = wrapEmail(
     "Apuntado a la lista de espera",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Te hemos apuntado a la lista de espera de <strong>${payload.businessName}</strong>:</p>
-     <p><strong>${payload.serviceName}</strong><br/>Para el ${payload.preferredDateLabel}</p>
+    `<p>Hola ${escapeHtml(payload.customerName)},</p>
+     <p>Te hemos apuntado a la lista de espera de <strong>${escapeHtml(payload.businessName)}</strong>:</p>
+     <p><strong>${escapeHtml(payload.serviceName)}</strong><br/>Para el ${payload.preferredDateLabel}</p>
      <p>Si se libera un hueco que encaje, te avisaremos por aquí con un enlace para confirmarlo.</p>
      <p><a href="${payload.accountLink}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Ver mi lista de espera</a></p>
      <p style="font-size:12px;color:#888;">Crea una cuenta gratis con este mismo email en "Mis citas" para ver ahí todas tus reservas (también las de otros negocios) y poder darte de baja cuando quieras.</p>`,
@@ -232,8 +250,8 @@ export async function sendWaitlistJoinConfirmationEmail(
 export async function sendReviewRequestEmail(payload: ReviewRequestEmailPayload): Promise<EmailResult> {
   const html = wrapEmail(
     "¿Qué te ha parecido?",
-    `<p>Hola ${payload.customerName},</p>
-     <p>Esperamos que haya ido bien tu cita en <strong>${payload.businessName}</strong>. ¿Nos dejas tu opinión? Solo te llevará un minuto.</p>
+    `<p>Hola ${escapeHtml(payload.customerName)},</p>
+     <p>Esperamos que haya ido bien tu cita en <strong>${escapeHtml(payload.businessName)}</strong>. ¿Nos dejas tu opinión? Solo te llevará un minuto.</p>
      <p><a href="${payload.reviewUrl}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Dejar mi opinión</a></p>
      <p style="font-size:12px;color:#888;">Este enlace es personal y de un solo uso.</p>`,
   );

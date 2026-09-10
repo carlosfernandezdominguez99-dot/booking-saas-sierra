@@ -5,6 +5,7 @@ import { joinWaitlistByAccount, getCustomerAccountProfile } from "@/lib/services
 import { createClient } from "@/lib/supabase/server";
 import { getPublicBusinessBySlug } from "@/lib/services/publicBusinessService";
 import { sendWaitlistJoinConfirmationEmail } from "@/lib/email/emailService";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/utils/rateLimit";
 
 export interface JoinWaitlistByAccountActionInput {
   serviceId: string;
@@ -26,6 +27,10 @@ export async function joinWaitlistByAccountAction(
   slug: string,
   input: JoinWaitlistByAccountActionInput,
 ): Promise<JoinWaitlistByAccountActionResult> {
+  // Freno a apuntarse en bucle: 10 veces cada 10 min por IP.
+  const { allowed } = await checkRateLimit("lista-espera-unirse", { maxRequests: 10, windowSeconds: 10 * 60 });
+  if (!allowed) return { error: RATE_LIMIT_MESSAGE };
+
   const token = await getCustomerSessionToken();
   if (!token) return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
 

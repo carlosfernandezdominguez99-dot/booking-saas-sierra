@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { acceptEmployeeInvite } from "@/lib/services/employeeInviteService";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/utils/rateLimit";
 
 export interface AcceptInviteResult {
   error?: string;
@@ -22,6 +23,10 @@ export async function signupForInviteAction(
   fullName: string,
   password: string,
 ): Promise<AcceptInviteResult> {
+  // Mismo freno que login/registro: 10 intentos cada 15 min por IP.
+  const { allowed } = await checkRateLimit("invitacion", { maxRequests: 10, windowSeconds: 15 * 60 });
+  if (!allowed) return { error: RATE_LIMIT_MESSAGE };
+
   if (password.length < 8) {
     return { error: "La contraseña debe tener al menos 8 caracteres." };
   }
@@ -59,6 +64,9 @@ export async function signupForInviteAction(
 
 /** Para quien ya tiene cuenta (de este negocio o de otro) — inicia sesión y acepta. */
 export async function loginForInviteAction(token: string, email: string, password: string): Promise<AcceptInviteResult> {
+  const { allowed } = await checkRateLimit("invitacion", { maxRequests: 10, windowSeconds: 15 * 60 });
+  if (!allowed) return { error: RATE_LIMIT_MESSAGE };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 

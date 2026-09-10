@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { submitReview } from "@/lib/services/reviewsService";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/utils/rateLimit";
 
 export interface SubmitReviewActionResult {
   ok: boolean;
@@ -19,6 +20,10 @@ export async function submitReviewAction(
   rating: number,
   comment: string,
 ): Promise<SubmitReviewActionResult> {
+  // Freno a probar tokens de reseña al azar: 5 intentos cada 10 min por IP.
+  const { allowed } = await checkRateLimit("resena", { maxRequests: 5, windowSeconds: 10 * 60 });
+  if (!allowed) return { ok: false, error: RATE_LIMIT_MESSAGE };
+
   try {
     const supabase = await createClient();
     const result = await submitReview(supabase, { token, rating, comment: comment.trim().slice(0, 500) });
